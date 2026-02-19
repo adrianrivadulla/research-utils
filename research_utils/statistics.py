@@ -29,6 +29,7 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
     grlabels = figargs['grouplabels']
     grcolours = figargs['groupcolours']
     custom_groupnames = figargs['custom_groupnames']
+    savingkw = figargs['savingkw']
 
     # Keys without RE
     noRE_keys = [key for key in demoanthrophysvars_ylabels.keys() if 'RE' not in key]
