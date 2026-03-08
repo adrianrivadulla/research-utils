@@ -26,6 +26,8 @@ For stats, you need:
 1. single speed/condition test (used in clustering and dim red papers)
 2. multicondition test with one RM factor and one between factor (used in clustering and fatigue papers)
 
+Revise namings and move figure saving logic outside of functions
+
 """
 # TODO.
 
@@ -181,8 +183,8 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
     plt.tight_layout()
 
     # Save and close TODO. Move this outside the function and just return the figure
-    demoanthrophysfig.savefig(os.path.join(reportdir, f'{savingkw}_demoantrhophys.png'), dpi=300, bbox_inches='tight')
-    plt.close(demoanthrophysfig)
+    fig.savefig(os.path.join(reportdir, f'{savingkw}_demoantrhophys.png'), dpi=300, bbox_inches='tight')
+    plt.close(fig)
 
     # RE variables
 
