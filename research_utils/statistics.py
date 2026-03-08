@@ -9,8 +9,25 @@ from scipy import stats
 import seaborn as sns
 import statsmodels.api as sm
 
-# TODO. Refactor to separate stats and figures.
-# TODO. Env file for all these imports
+
+# TODO.
+
+"""
+
+- Refactor to separate stats and figures.
+- Env file for all these imports
+- Simplify var names in functions
+- Use snake_case for all var names in functions
+
+- Move here scripts for demoanthrophys analysis
+
+For stats, you need:
+
+1. single speed/condition test (used in clustering and dim red papers)
+2. multicondition test with one RM factor and one between factor (used in clustering and fatigue papers)
+
+"""
+# TODO.
 
 
 
@@ -44,20 +61,20 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
 
     # Make figures
     if len(noRE_keys) == 16:
-        demoanthrophysfig, demoanthrophysaxs = plt.subplots(4, 4, figsize=(11, 8))
+        fig, axs = plt.subplots(4, 4, figsize=(11, 8))
 
     elif len(noRE_keys) == 15:
-        demoanthrophysfig, demoanthrophysaxs = plt.subplots(3, 5, figsize=(11, 6))
+        fig, axs = plt.subplots(3, 5, figsize=(11, 6))
 
     else:
         print('Number of variables without RE is not 15 or 16.'
               'Figure may look a mess.'
               'Please modify the code accordingly.')
         nrows = int(np.ceil(len(noRE_keys) / 4))
-        demoanthrophysfig, demoanthrophysaxs = plt.subplots(nrows, 4, figsize=(11, 3 * nrows))
+        fig, axs = plt.subplots(nrows, 4, figsize=(11, 3 * nrows))
 
     # Flatten axes
-    demoanthrophysaxs = demoanthrophysaxs.flatten()
+    axs = axs.flatten()
 
     # Go through each variable
     for vari, varname in enumerate([key for key in demoanthrophysvars_ylabels.keys() if key != 'RE']):
@@ -84,7 +101,7 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
                 demoanthrophys[varname]['chi_test']['p'], _, _ = stats.chi2_contingency(sextable)
 
             # Bar plot
-            sns.barplot(ax=demoanthrophysaxs[vari],
+            sns.barplot(ax=axs[vari],
                         x=grlabels,
                         y=fempctge,
                         hue=grlabels,
@@ -93,26 +110,26 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
 
             # Set xticks
             if custom_groupnames:
-                demoanthrophysaxs[vari].set_xticks(demoanthrophysaxs[vari].get_xticks(), grlabels)
+                axs[vari].set_xticks(axs[vari].get_xticks(), grlabels)
 
         elif varname == 'RunningDaysAWeek':
 
             # Count plot
-            sns.countplot(ax=demoanthrophysaxs[vari],
+            sns.countplot(ax=axs[vari],
                           x=datasheet[varname],
                           hue=datasheet[groupvarname],
                           palette=grcolours)
 
             # Remove legend
-            demoanthrophysaxs[vari].get_legend().remove()
+            axs[vari].get_legend().remove()
 
             # Remove xlabel
-            demoanthrophysaxs[vari].set_xlabel('')
+            axs[vari].set_xlabel('')
 
         else:
 
             # Violin plot
-            sns.violinplot(ax=demoanthrophysaxs[vari],
+            sns.violinplot(ax=axs[vari],
                            x=datasheet[groupvarname],
                            y=datasheet[varname],
                            hue=datasheet[groupvarname],
@@ -121,25 +138,25 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
 
             # Xticks
             if custom_groupnames:
-                demoanthrophysaxs[vari].set_xticks(demoanthrophysaxs[vari].get_xticks(), custom_groupnames)
+                axs[vari].set_xticks(axs[vari].get_xticks(), custom_groupnames)
             else:
-                demoanthrophysaxs[vari].set_xticks(demoanthrophysaxs[vari].get_xticks(),
-                                                   [f'C{int(x)}' for x in demoanthrophysaxs[vari].get_xticks()])
+                axs[vari].set_xticks(axs[vari].get_xticks(),
+                                                   [f'C{int(x)}' for x in axs[vari].get_xticks()])
 
         # Yticks for Time10Ks
         if varname == 'Time10Ks' or varname == 'Sess2_times':
             # Convert to datetime and keep just mm:ss
-            yticks = [str(datetime.timedelta(seconds=x)) for x in demoanthrophysaxs[vari].get_yticks()]
+            yticks = [str(datetime.timedelta(seconds=x)) for x in axs[vari].get_yticks()]
             yticks = [x[x.find(':') + 1:] for x in yticks]
 
             # Set new ticks
-            demoanthrophysaxs[vari].set_yticklabels(yticks)
+            axs[vari].set_yticklabels(yticks)
 
         # Ylabels
-        demoanthrophysaxs[vari].set_ylabel(demoanthrophysvars_ylabels[varname])
+        axs[vari].set_ylabel(demoanthrophysvars_ylabels[varname])
 
         # Xlabel off
-        demoanthrophysaxs[vari].set_xlabel('')
+        axs[vari].set_xlabel('')
 
         # Title
         if varname in demoanthrophysvars_titles.keys():
@@ -154,16 +171,16 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
 
             # Add asterisk to indicate significant differences
             if demoanthrophys[varname][stat_test]['p'] < 0.05:
-                demoanthrophysaxs[vari].set_title(f'{title} *')
+                axs[vari].set_title(f'{title} *')
             else:
-                demoanthrophysaxs[vari].set_title(title)
+                axs[vari].set_title(title)
 
         else:
-            demoanthrophysaxs[vari].set_title(title)
+            axs[vari].set_title(title)
 
     plt.tight_layout()
 
-    # Save and close
+    # Save and close TODO. Move this outside the function and just return the figure
     demoanthrophysfig.savefig(os.path.join(reportdir, f'{savingkw}_demoantrhophys.png'), dpi=300, bbox_inches='tight')
     plt.close(demoanthrophysfig)
 
@@ -208,7 +225,7 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
         for gri, (group, groupname) in enumerate(zip(grlabels, custom_groupnames)):
             legend.get_texts()[gri].set_text(groupname)
 
-    # Save and close
+    # Save and close TODO. Move this outside the function and just return the figure
     plt.tight_layout()
     refig.savefig(os.path.join(reportdir, f'{savingkw}_multispeed_RE.png'), dpi=300, bbox_inches='tight')
     plt.close(refig)
@@ -279,9 +296,10 @@ def anova2onerm_0d_and_posthocs(datadf, dv='', within='', between='', subject=''
     return statsdict
 
 
-def comparison_0D_contvar_indgroups(datadict, grouping, title_kword, figdir, colours):
+def comparison_0D_contvar_indgroups_one_condition(datadict, grouping, title_kword, figdir, colours):
 
     """
+    TODO. Understand where this is used (not in fatigue)
     Compare continuous variables between independent groups using various statistical tests.
 
     Parameters:
@@ -408,3 +426,229 @@ def comparison_0D_contvar_indgroups(datadict, grouping, title_kword, figdir, col
                     disc_comp[key]['Dunn_post_hoc'] = posthoc_dunn(groups, p_adjust='bonferroni')
 
     return disc_comp
+
+
+def comparison_1D_contvar_indgroups_one_condition(datadict, grouping, title_kword, figdir, colours):
+
+    """
+    TODO. Understand where this is used (not in fatigue)
+    Compare continuous variables between independent groups using SPM1D non-parametric tests.
+
+    Parameters:
+    datadict (dict): Dictionary containing the data to be compared.
+    grouping (list or np.ndarray): List or array containing the group labels for each data point.
+    title_kword (str): Keyword to be used in the title of the plots.
+    figdir (str): Directory where the plots will be saved.
+    colours (list or np.ndarray): List or array containing the colors for the groups.
+
+    Returns:
+    cont_comp (dict): A dictionary containing the results of the statistical tests.
+    """
+
+    # Conduct traditional SPM1D non-param tests
+    cont_comp = {}
+
+    for key, values in datadict.items():
+
+        cont_comp[key] = {}
+
+        # Get variable in groups
+        groups = [values[np.where(grouping == x)[0], :] for x in natsort.natsorted(np.unique(grouping))]
+
+        if len(groups) == 2:
+
+            # Non param ttest
+            nonparam_ttest2 = spm1d.stats.nonparam.ttest2(groups[0], groups[1])
+            cont_comp[key]['np_ttest2'] = nonparam_ttest2.inference(alpha=0.05, two_tailed=True, iterations=500)
+
+            # Vis
+            varfig = plt.figure(figsize=(10, 4))
+
+            # Average and std patterns by group
+            plt.subplot(1, 2, 1)
+            for group, colour in zip(groups, colours):
+                spm1d.plot.plot_mean_sd(group, linecolor=colour, facecolor=colour)
+            plt.title(key)
+
+            plt.subplot(1, 2, 2)
+
+            cont_comp[key]['np_ttest2'].plot()
+            cont_comp[key]['np_ttest2'].plot_threshold_label(fontsize=8)
+            cont_comp[key]['np_ttest2'].plot_p_values()
+            plt.title(f'np_ttest2 {key}')
+
+            plt.tight_layout()
+            varfig.savefig(os.path.join(figdir, f'{title_kword}_{key}_np_ttest2.png'))
+            plt.close(varfig)
+
+        elif len(groups) > 2:
+
+            # Non parametric ANOVA
+            nonparam_ANOVA = spm1d.stats.nonparam.anova1(values, grouping)
+            cont_comp[key]['np_ANOVA'] = nonparam_ANOVA.inference(alpha=0.05, iterations=500)
+
+            # Vis
+            varfig = plt.figure(figsize=(10, 4))
+
+            # Average and std patterns by group
+            plt.subplot(1, 2, 1)
+            for group, colour in zip(groups, colours):
+                spm1d.plot.plot_mean_sd(group, linecolor=colour, facecolor=colour)
+                plt.title(key)
+
+            plt.subplot(1, 2, 2)
+            cont_comp[key]['np_ANOVA'].plot()
+            cont_comp[key]['np_ANOVA'].plot_threshold_label(fontsize=8)
+            cont_comp[key]['np_ANOVA'].plot_p_values()
+            plt.title(f'np_ANOVA {key}')
+            plt.tight_layout()
+            varfig.savefig(os.path.join(figdir, f'{title_kword}_{key}_np_ANOVA.png'))
+            plt.close(varfig)
+
+            if cont_comp[key]['np_ANOVA'].h0reject:
+
+                # Adjust alpha for the number of comparisons to be performed
+                ngroups = len(groups)
+                alpha = 0.05 / ngroups * (ngroups - 1) / 2
+
+                # Get unique pairwise comparisons
+                paircomp = list(combinations(np.unique(grouping), 2))
+
+                # Set number of subplots for comparison
+                if len(paircomp) == 3:
+                    fig, axes = plt.subplots(2, 3)
+                    fig.set_size_inches(11, 6)
+
+                elif len(paircomp) == 6:
+                    fig, axes = plt.subplots(4, 3)
+                    fig.set_size_inches(11, 12)
+
+                else:
+                    print('I am not ready for so many plots. Figure it out.')
+                axes = axes.flat
+                for pairi, pair in enumerate(paircomp):
+
+                    # Get pair key word
+                    pairkw = f'{str(pair[0])}_{str(pair[1])}'
+
+                    # Run post-hoc analysis
+                    cont_comp[key]['post_hoc_np_ttest2'] = {}
+                    nonparam_ttest2 = spm1d.stats.nonparam.ttest2(groups[pair[0]], groups[pair[1]])
+                    cont_comp[key]['post_hoc_np_ttest2'][pairkw] = nonparam_ttest2.inference(alpha=alpha,
+                                                                                             two_tailed=True,
+                                                                                             iterations=500)
+
+                    # Vis
+                    if pairi <= 2:
+                        axi = pairi
+                    else:
+                        axi = pairi + 6
+
+                    # NOTE THIS ASSUMES THAT THE ORDER OF THE COLOURS MATCHES THE ORDER OF THE LABELS
+                    spm1d.plot.plot_mean_sd(groups[pair[0]], ax=axes[axi],
+                                            linecolor=colours[pair[0]],
+                                            facecolor=colours[pair[0]])
+                    spm1d.plot.plot_mean_sd(groups[pair[1]], ax=axes[axi],
+                                            linecolor=colours[pair[0]],
+                                            facecolor=colours[pair[1]])
+                    axes[pairi].set_title(str(pair))
+
+                    pairkw = f'{str(pair[0])}_{str(pair[1])}'
+
+                    cont_comp[key]['post_hoc_np_ttest2'][pairkw].plot(ax=axes[axi + 3])
+                    cont_comp[key]['post_hoc_np_ttest2'][pairkw].plot_threshold_label(ax=axes[axi + 3], fontsize=8)
+                    cont_comp[key]['post_hoc_np_ttest2'][pairkw].plot_p_values(ax=axes[axi + 3])
+
+                fig.suptitle(f'{title_kword}_{key}')
+                plt.tight_layout()
+                plt.savefig(os.path.join(figdir, f'{title_kword}_{key}_posthoc.png'))
+                plt.close(plt.gcf())
+
+    return cont_comp
+
+
+def write_0Dposthoc_statstr(posthoctable, contrastvalue, withinfactor, withinfactorvalue):
+
+    """
+    Generate a string representation of post-hoc test statistics for a given contrast and within-factor value.
+
+    Parameters:
+    posthoctable (pd.DataFrame): The DataFrame containing the post-hoc test results.
+    contrastvalue (str): The contrast value to filter the post-hoc table.
+    withinfactor (str): The within-subjects factor to filter the post-hoc table.
+    withinfactorvalue (str): The value of the within-subjects factor to filter the post-hoc table.
+
+    Returns:
+    str: A string representation of the post-hoc test statistics, including t-value, p-value, and Cohen's d.
+    """
+
+    t = np.round(posthoctable['T'].loc[
+                     (posthoctable['Contrast'] == contrastvalue) & (
+                                 posthoctable[withinfactor] == withinfactorvalue)].values[
+                     0], 2)
+    d = np.round(posthoctable['cohen'].loc[
+                     (posthoctable['Contrast'] == contrastvalue) & (
+                                 posthoctable[withinfactor] == withinfactorvalue)].values[
+                     0], 2)
+    if posthoctable['p-corr'].loc[
+        (posthoctable['Contrast'] == contrastvalue) & (posthoctable[withinfactor] == withinfactorvalue)].values[
+        0] < 0.001:
+        p = '< 0.001'
+    else:
+        p = np.round(posthoctable['p-corr'].loc[
+                         (posthoctable['Contrast'] == contrastvalue) & (
+                                     posthoctable[withinfactor] == withinfactorvalue)].values[
+                         0], 3)
+
+    return f't = {t}, p = {p}, d = {d}'
+
+
+def write_0DmixedANOVA_statstr(mixed_anovatable, between='', within='', betweenlabel='', withinlabel='', write_between=True, write_within=True, write_interaction=True):
+
+    """
+    Write a formatted string summarizing the results of a mixed ANOVA with one between-subjects factor and
+     one within-subjects factor.
+
+    Parameters:
+    mixed_anovatable (pd.DataFrame): DataFrame containing the ANOVA results. Output of penguoin mixed_anova.
+    between (str): Name of the between-subjects factor.
+    within (str): Name of the within-subjects factor.
+    betweenlabel (str, optional): Label for the between-subjects factor. Defaults to the value of 'between'.
+    withinlabel (str, optional): Label for the within-subjects factor. Defaults to the value of 'within'.
+
+    Returns:
+    statstr (str): A formatted string summarizing the ANOVA results.
+    """
+
+
+    # Get factor labels or set them to factor names if not provided
+    if betweenlabel == '':
+        betweenlabel = between
+    if withinlabel == '':
+        withinlabel = within
+
+    statstr = ''
+
+    if write_between:
+        if mixed_anovatable['p-unc'].loc[mixed_anovatable['Source'] == between].values < 0.001:
+            statstr += f'{betweenlabel}: F = {np.round(mixed_anovatable["F"].values[0], 2)}, p < 0.001'
+        else:
+            statstr += (f'{betweenlabel}: F = {np.round(mixed_anovatable["F"].values[0], 2)}, '
+                       f'p = {np.round(mixed_anovatable["p-unc"].values[0], 3)}')
+
+    if write_within:
+        if mixed_anovatable['p-unc'].loc[mixed_anovatable['Source'] == within].values < 0.001:
+            statstr += f'; {withinlabel}: F = {np.round(mixed_anovatable["F"].values[1], 2)}, p < 0.001'
+        else:
+            statstr += (f'; {withinlabel}: F = {np.round(mixed_anovatable["F"].values[1], 2)}, '
+                        f'p = {np.round(mixed_anovatable["p-unc"].values[1], 3)}')
+
+    if write_interaction:
+        if mixed_anovatable['p-unc'].loc[mixed_anovatable['Source'] == 'Interaction'].values < 0.001:
+            statstr += (f'; {betweenlabel}x{withinlabel}: F = {np.round(mixed_anovatable["F"].values[2], 2)}, '
+                        f'p < 0.001')
+        else:
+            statstr += (f'; {betweenlabel}x{withinlabel}: F = {np.round(mixed_anovatable["F"].values[2], 2)}, '
+                        f'p = {np.round(mixed_anovatable["p-unc"].values[2], 2)}')
+
+    return statstr
