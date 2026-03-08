@@ -52,7 +52,7 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
     noRE_keys = [key for key in demoanthrophysvars_ylabels.keys() if 'RE' not in key]
 
     # Demographics, anthropometrics and physiological variables ignoring EE
-    demoanthrophys = comparison_0D_contvar_indgroups(
+    demoanthrophys = comparison_0D_contvar_indgroups_one_condition(
         {key: datasheet[key] for key in noRE_keys if 'Sex' not in key},
         datasheet[groupvarname].values,
         savingkw,
