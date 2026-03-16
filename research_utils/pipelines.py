@@ -48,7 +48,7 @@ def run_0D_ANOVA2onerm(
 
     figdict = {}
     stat_comparison = {}
-
+    write_within = True
     if within_vis:
         write_within = False
         figdict["discvars_within_effect"], withinaxs = plt.subplots(
