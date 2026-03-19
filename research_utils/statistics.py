@@ -53,7 +53,7 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
     noRE_keys = [key for key in demoanthrophysvars_ylabels.keys() if "RE" not in key]
 
     # Demographics, anthropometrics and physiological variables ignoring EE
-    demoanthrophys = comparison_0D_contvar_indgroups_one_condition(
+    demoanthrophys = compare_0D_contvar_indgroups_one_condition(
         {key: datasheet[key] for key in noRE_keys if "Sex" not in key},
         datasheet[groupvarname].values,
         savingkw,
@@ -342,11 +342,8 @@ def anova2onerm_0d_and_posthocs(datadf, dv="", within="", between="", subject=""
     return statsdict
 
 
-def comparison_0D_contvar_indgroups_one_condition(
-    datadict, grouping, title_kword, figdir, colours
-):
+def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
     """
-    TODO. Understand where this is used (not in fatigue)
     Compare continuous variables between independent groups using various statistical tests.
 
     Parameters:
@@ -360,7 +357,12 @@ def comparison_0D_contvar_indgroups_one_condition(
     disc_comp (dict): A dictionary containing the results of the statistical tests.
     """
 
+    # Get kwargs
+    colours = kwargs.get("colours", sns.color_palette("Set2", len(np.unique(grouping))))
+    group_names = kwargs.get("group_names", np.unique(grouping))
+
     disc_comp = {}
+    figs = {}
 
     for key, values in datadict.items():
         disc_comp[key] = {}
@@ -379,8 +381,9 @@ def comparison_0D_contvar_indgroups_one_condition(
 
         # Run normality tests
         disc_comp[key]["normality"] = {}
-        fig, axes = plt.subplots(1, len(groups))
-        fig.set_size_inches([11, 3.3])
+
+        figs[key], axes = plt.subplots(1, len(groups))
+        figs[key].set_size_inches([11, 3.3])
 
         # test trigger
         param_route = 1
@@ -402,11 +405,13 @@ def comparison_0D_contvar_indgroups_one_condition(
                 ax=axes[labi],
                 markeredgecolor=colours[labi],
                 markerfacecolor=colours[labi],
-                line="r",
-                fmt="k-",
+                line='r',
             )
+            # This is so goofy but sm.qqplot doesn't take a line colour argument and I need to change it here
             axes[labi].get_lines()[1].set_color("black")
-            axes[labi].set_xlabel("Cluster " + str(labi))
+
+            # Set labels and title
+            axes[labi].set_xlabel(group_names[labi])
 
             if disc_comp[key]["normality"][str(labi)]["p"] < 0.001:
                 axes[labi].set_title(
@@ -420,12 +425,10 @@ def comparison_0D_contvar_indgroups_one_condition(
                     + str(np.round(disc_comp[key]["normality"][str(labi)]["W_stat"], 3))
                     + "; p = "
                     + str(np.round(disc_comp[key]["normality"][str(labi)]["p"], 3))
-                )
+            )
 
-        fig.suptitle(title_kword + "_" + key)
+        figs[key].suptitle(key)
         plt.tight_layout()
-        plt.savefig(os.path.join(figdir, title_kword + "_" + key + "_" + "QQplot.png"))
-        plt.close(plt.gcf())
 
         # Parametric route
         if param_route:
@@ -502,7 +505,7 @@ def comparison_0D_contvar_indgroups_one_condition(
                         groups, p_adjust="bonferroni"
                     )
 
-    return disc_comp
+    return disc_comp, figs
 
 
 def comparison_1D_contvar_indgroups_one_condition(
@@ -810,3 +813,69 @@ def write_0DmixedANOVA_statstr(
             )
 
     return statstr
+
+
+def write_spm_stats_str(spmobj, mode='full'):
+
+    """
+    Generate a string representation of SPM (Statistical Parametric Mapping) statistics.
+
+    Parameters:
+    spmobj (object): The SPM object containing the statistical results.
+    mode (str, optional): The mode of the output string. Must be one of 'full', 'stat', or 'p'. Defaults to 'full'.
+
+    Returns:
+    str: A string representation of the SPM statistics.
+
+    Raises:
+    ValueError: If the mode is not one of 'full', 'stat', or 'p'.
+    """
+
+    # Make sure mode is full, stat or p
+    if mode not in ['full', 'stat', 'p']:
+        raise ValueError('mode must be either full, stat or p')
+
+    # Initialise statsstr
+    statsstr = ''
+
+    # Add stat value
+    if mode == 'full' or mode == 'stat':
+        statsstr = f'{np.round(spmobj.zstar, 2)}'
+
+    # Add p value
+    if mode == 'full' or mode == 'p':
+        if len(spmobj.p) == 1:
+            if spmobj.p[0] < 0.001:
+                statsstr += f', p < 0.001'
+            else:
+                statsstr += f', p = {np.round(spmobj.p[0], 3)}'
+        elif len(spmobj.p) > 1:
+            statsstr += ', p = ['
+            for i, p in enumerate(spmobj.p):
+                if i > 0:
+                    statsstr += ', '
+                if p < 0.001:
+                    statsstr += f'< 0.001'
+                else:
+                    statsstr += f'{np.round(p, 3)}'
+            statsstr += ']'
+
+    return statsstr
+
+
+def add_sig_spm_cluster_patch(ax, spmobj, tscaler=1):
+
+    """
+    Add patches to a plot to indicate significant clusters from SPM (Statistical Parametric Mapping) analysis.
+
+    Parameters:
+    ax (matplotlib.axes.Axes): The axes object to which the patches will be added.
+    spmobj (object): The SPM object containing the significant clusters.
+    tscaler (float, optional): A scaling factor for the time axis. Defaults to 1.
+    """
+
+    for sigcluster in spmobj.clusters:
+        ylim = ax.get_ylim()
+        ax.add_patch(plt.Rectangle((sigcluster.endpoints[0] * tscaler, ylim[0]),
+                                   (sigcluster.endpoints[1] - sigcluster.endpoints[0]) * tscaler,
+                                   ylim[1] - ylim[0], color='grey', alpha=0.5, linestyle=''))
