@@ -151,14 +151,13 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
         # Yticks for Time10Ks
         if varname == "Time10Ks" or varname == "Sess2_times":
             # Convert to datetime and keep just mm:ss
-            yticks = axs[vari].get_yticks()
-            yticklabels = [
-                str(timedelta(seconds=x)) for x in yticks
+            yticks = [
+                str(timedelta(seconds=x)) for x in axs[vari].get_yticks()
             ]
-            yticklabels = [x[x.find(":") + 1:] for x in yticklabels]
+            yticks = [x[x.find(":") + 1:] for x in yticks]
 
             # Set new ticks
-            axs[vari].set_yticks(yticks, yticklabels)
+            axs[vari].set_yticklabels(yticks)
 
         # Ylabels
         axs[vari].set_ylabel(ylabels[varname])
