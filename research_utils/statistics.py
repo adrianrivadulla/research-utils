@@ -32,41 +32,68 @@ Revise namings and move figure saving logic outside of functions
 # TODO.
 
 
-def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
+def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds, titles, **kwargs):
     """
     Compare demographics, anthropometrics and physiological variables between clusters.
 
     :return:
     """
 
-    # Get figargs
-    reportdir = figargs["reportdir"]
-    savingkw = figargs["savingkw"]
-    demoanthrophysvars_titles = figargs["demoanthrophysvars_titles"]
-    demoanthrophysvars_ylabels = figargs["demoanthrophysvars_ylabels"]
-    grlabels = figargs["grouplabels"]
-    grcolours = figargs["groupcolours"]
-    custom_groupnames = figargs["custom_groupnames"]
-    savingkw = figargs["savingkw"]
+    # Get kwargs
+    ylabels = kwargs.get("ylabels", {var: "" for var in titles})
+    group_names = kwargs.get("group_names", np.unique(datasheet[grouping_var]).tolist())
+    group_colours = kwargs.get("group_colours", sns.color_palette("Set2", len(group_names)))
 
-    # Keys without RE
-    noRE_keys = [key for key in demoanthrophysvars_ylabels.keys() if "RE" not in key]
+    # Vars without RE
+    noRE_vars = [key for key in titles if "RE" not in key]
 
-    # Demographics, anthropometrics and physiological variables ignoring EE
-    demoanthrophys = compare_0D_contvar_indgroups_one_condition(
-        {key: datasheet[key] for key in noRE_keys if "Sex" not in key},
-        datasheet[groupvarname].values,
-        savingkw,
-        reportdir,
-        grcolours,
+    # Demographics, anthropometrics and physiological variables ignoring Sex
+    stat_comparison, normfigs = compare_0D_contvar_indgroups_one_condition(
+        {var: datasheet[var] for var in noRE_vars if "Sex" != var},
+        datasheet[grouping_var].values,
+        colours=group_colours,
+        group_names=group_names,
     )
 
-    # Make figures
-    if len(noRE_keys) == 16:
-        fig, axs = plt.subplots(4, 4, figsize=(11, 8))
+    group_labels = np.unique(datasheet[grouping_var].values)
 
-    elif len(noRE_keys) == 15:
-        fig, axs = plt.subplots(3, 5, figsize=(11, 6))
+    # Compare sex
+    fempctge = []
+    sextable = []
+
+    for gri, group in enumerate(group_labels):
+        # Get pts in that cluster
+        groupmaster = datasheet.loc[datasheet[grouping_var] == group]
+        fempctge.append(
+            len(groupmaster.loc[groupmaster["Sex"] == "Female"])
+            / len(groupmaster)
+            * 100
+        )
+
+        # Get number of women and men in that cluster
+        sextable.append(
+            [
+                len(groupmaster.loc[groupmaster["Sex"] == "Female"]),
+                len(groupmaster.loc[groupmaster["Sex"] == "Male"]),
+            ]
+        )
+
+    # Add chi square test
+    stat_comparison['Sex'] = {}
+    stat_comparison['Sex']["chi_test"] = {}
+    (
+        stat_comparison['Sex']["chi_test"]["chi_sq"],
+        stat_comparison['Sex']["chi_test"]["p"],
+        _,
+        _,
+    ) = stats.chi2_contingency(sextable)
+
+    # Make figures
+    if len(noRE_vars) == 16:
+        demoanthrophysfig, axs = plt.subplots(4, 4, figsize=(11, 8))
+
+    elif len(noRE_vars) == 15:
+        demoanthrophysfig, axs = plt.subplots(3, 5, figsize=(11, 6))
 
     else:
         print(
@@ -74,95 +101,53 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
             "Figure may look a mess."
             "Please modify the code accordingly."
         )
-        nrows = int(np.ceil(len(noRE_keys) / 4))
-        fig, axs = plt.subplots(nrows, 4, figsize=(11, 3 * nrows))
+        nrows = int(np.ceil(len(noRE_vars) / 4))
+        demoanthrophysfig, axs = plt.subplots(nrows, 4, figsize=(11, 3 * nrows))
 
     # Flatten axes
     axs = axs.flatten()
 
-    # Go through each variable
-    for vari, varname in enumerate(
-        [key for key in demoanthrophysvars_ylabels.keys() if key != "RE"]
-    ):
+    # Vis variables
+    for vari, varname in enumerate(noRE_vars):
+
         if varname == "Sex":
-            fempctge = []
-            sextable = []
-
-            for gri, group in enumerate(grlabels):
-                # Get pts in that cluster
-                groupmaster = datasheet.loc[datasheet[groupvarname] == group]
-                fempctge.append(
-                    len(groupmaster.loc[groupmaster["Sex"] == "Female"])
-                    / len(groupmaster)
-                    * 100
-                )
-
-                # Get number of women and men in that cluster
-                sextable.append(
-                    [
-                        len(groupmaster.loc[groupmaster["Sex"] == "Female"]),
-                        len(groupmaster.loc[groupmaster["Sex"] == "Male"]),
-                    ]
-                )
-
-            # Add chi square test
-            demoanthrophys[varname] = {}
-            demoanthrophys[varname]["chi_test"] = {}
-            (
-                demoanthrophys[varname]["chi_test"]["chi_sq"],
-                demoanthrophys[varname]["chi_test"]["p"],
-                _,
-                _,
-            ) = stats.chi2_contingency(sextable)
 
             # Bar plot
             sns.barplot(
                 ax=axs[vari],
-                x=grlabels,
+                x=group_labels,
                 y=fempctge,
-                hue=grlabels,
-                palette=grcolours,
+                hue=group_labels,
+                palette=group_colours,
                 legend=False,
             )
 
             # Set xticks
-            if custom_groupnames:
-                axs[vari].set_xticks(axs[vari].get_xticks(), grlabels)
+            axs[vari].set_xticks(axs[vari].get_xticks(), group_names)
 
         elif varname == "RunningDaysAWeek":
             # Count plot
             sns.countplot(
                 ax=axs[vari],
                 x=datasheet[varname],
-                hue=datasheet[groupvarname],
-                palette=grcolours,
+                hue=datasheet[grouping_var],
+                palette=group_colours,
+                legend=False,
             )
-
-            # Remove legend
-            axs[vari].get_legend().remove()
-
-            # Remove xlabel
-            axs[vari].set_xlabel("")
 
         else:
             # Violin plot
             sns.violinplot(
                 ax=axs[vari],
-                x=datasheet[groupvarname],
+                x=datasheet[grouping_var],
                 y=datasheet[varname],
-                hue=datasheet[groupvarname],
-                palette=grcolours,
+                hue=datasheet[grouping_var],
+                palette=group_colours,
                 legend=False,
             )
 
             # Xticks
-            if custom_groupnames:
-                axs[vari].set_xticks(axs[vari].get_xticks(), custom_groupnames)
-            else:
-                axs[vari].set_xticks(
-                    axs[vari].get_xticks(),
-                    [f"C{int(x)}" for x in axs[vari].get_xticks()],
-                )
+            axs[vari].set_xticks(axs[vari].get_xticks(), group_names)
 
         # Yticks for Time10Ks
         if varname == "Time10Ks" or varname == "Sess2_times":
@@ -170,106 +155,113 @@ def demoanthrophys_analysis(datasheet, groupvarname, respeeds, figargs):
             yticks = [
                 str(datetime.timedelta(seconds=x)) for x in axs[vari].get_yticks()
             ]
-            yticks = [x[x.find(":") + 1 :] for x in yticks]
+            yticks = [x[x.find(":") + 1:] for x in yticks]
 
             # Set new ticks
             axs[vari].set_yticklabels(yticks)
 
         # Ylabels
-        axs[vari].set_ylabel(demoanthrophysvars_ylabels[varname])
+        axs[vari].set_ylabel(ylabels[varname])
 
         # Xlabel off
         axs[vari].set_xlabel("")
 
         # Title
-        if varname in demoanthrophysvars_titles.keys():
-            title = demoanthrophysvars_titles[varname]
-        elif varname == "Sex":
-            title = "Sex"
-
-        if varname in demoanthrophys.keys():
-            # Get key which is not normality
+        if varname in stat_comparison.keys():
+            # Get key which is not normality or 'homoscedasticity'
             stat_test = [
-                key for key in demoanthrophys[varname].keys() if key != "normality"
+                key for key in stat_comparison[varname].keys() if key not in ["normality", "homoscedasticity"]
             ][0]
 
             # Add asterisk to indicate significant differences
-            if demoanthrophys[varname][stat_test]["p"] < 0.05:
-                axs[vari].set_title(f"{title} *")
+            if stat_comparison[varname][stat_test]["p"] < 0.05:
+                axs[vari].set_title(f"{titles[var]} *")
             else:
-                axs[vari].set_title(title)
+                axs[vari].set_title(titles[varname])
 
         else:
-            axs[vari].set_title(title)
+            axs[vari].set_title(titles[varname])
 
     plt.tight_layout()
-
-    # Save and close TODO. Move this outside the function and just return the figure
-    fig.savefig(
-        os.path.join(reportdir, f"{savingkw}_demoantrhophys.png"),
-        dpi=300,
-        bbox_inches="tight",
-    )
-    plt.close(fig)
 
     # RE variables
 
     # Get EE data into a dataframe FIX PT AND SPEEDS
     redf = pd.DataFrame()
     redf["EE"] = np.concatenate(
-        [datasheet[f"EE{speed}kg"].values for speed in respeeds]
+        [datasheet[f"EE{speed}kg"].values for speed in re_speeds]
     )
     redf["speed"] = np.concatenate(
-        [[int(speed)] * len(datasheet.index) for speed in respeeds]
+        [[int(speed)] * len(datasheet.index) for speed in re_speeds]
     )
-    redf["clustlabel"] = np.tile(datasheet[groupvarname].values, len(respeeds))
-    redf["ptcode"] = np.tile(datasheet.index, len(respeeds))
+    redf["clustlabel"] = np.tile(datasheet[grouping_var].values, len(re_speeds))
+    redf["ptcode"] = np.tile(datasheet.index, len(re_speeds))
 
     # Run 2 way ANOVA with one RM factor (speed) and one between factor (cluster)
-    demoanthrophys["EE"] = anova2onerm_0d_and_posthocs(
-        redf, dv="EE", within="speed", between="clustlabel", subject="ptcode"
+    stat_comparison["RE"] = anova2onerm_0d_and_posthocs(
+        redf, dv="EE", within="speed", between=grouping_var, subject="ptcode"
     )
 
-    refig, reaxs = plt.subplots(1, 1, figsize=(6, 2))
-    sns.violinplot(
-        ax=reaxs, x="speed", y="EE", hue="clustlabel", data=redf, palette=grcolours
-    )
+    refig, reaxs = plt.subplots(1, 3, figsize=(11, 3))
+    reaxs = reaxs.flatten()
 
-    # Append km/h to each xtick
-    reaxs.set_xticklabels([f"{speed} km/h" for speed in respeeds])
-    reaxs.set_xlabel("")
-    reaxs.set_ylabel(demoanthrophysvars_ylabels["RE"])
-    reaxs.set_title("Running Economy")
+    # Plot results
+    for speedi, speed in enumerate(re_speeds):
 
-    # Legend
-    reaxs.legend(
-        loc="lower center",
-        bbox_to_anchor=(0.5, 0),
-        ncol=2,
-        bbox_transform=refig.transFigure,
-        frameon=False,
-    )
-    plt.subplots_adjust(bottom=0.25)
+        # Violin plot
+        sns.violinplot(ax=reaxs[speedi],
+                       x=grouping_var,
+                       y='EE',
+                       data=redf.loc[redf['speed'] == speed],
+                       palette=group_colours,
+                       hue=grouping_var,
+                       legend=False)
 
-    # Get legend
-    legend = reaxs.get_legend()
+        # Add C at the start of each xtick
+        reaxs[speedi].set_xticks(reaxs[speedi].get_xticks(),
+                                 [f'C{int(x)}' for x in reaxs[speedi].get_xticks()])
 
-    # Change legend labels
-    if custom_groupnames:
-        for gri, (group, groupname) in enumerate(zip(grlabels, custom_groupnames)):
-            legend.get_texts()[gri].set_text(groupname)
+        # Add stats in xlabel
+        if (stat_comparison['RE']['ANOVA2onerm']['p-unc'].loc[
+            stat_comparison['RE']['ANOVA2onerm']['Source'] == 'clustlabel'].values
+                < 0.05):
 
-    # Save and close TODO. Move this outside the function and just return the figure
+            statsstr = write_0Dposthoc_statstr(stat_comparison['RE']['posthocs'],
+                                               f'speed * {grouping_var}',
+                                               'speed',
+                                               speed)
+            reaxs[speedi].set_xlabel(f'C: {statsstr}', fontsize=10)
+
+        else:
+            reaxs[speedi].set_xlabel(' ', fontsize=10)
+
+        # y label
+        if speedi == 0:
+            reaxs[speedi].set_ylabel(ylabels['RE'])
+        else:
+            reaxs[speedi].set_ylabel('')
+
+        # Add title
+        reaxs[speedi].set_title(f'{speed} km/h')
+
+    # Same y limits
+    ylims = [ax.get_ylim() for ax in reaxs]
+    for ax in reaxs:
+        ax.set_ylim([min([ylim[0] for ylim in ylims]), max([ylim[1] for ylim in ylims])])
+
+    # Set suptitle
+    statsstr = write_0DmixedANOVA_statstr(stat_comparison['RE']['ANOVA2onerm'],
+                                          between=grouping_var,
+                                          within='speed',
+                                          betweenlabel='C',
+                                          withinlabel='S')
+
+    # Set title
+    refig.suptitle(f'Running economy\n{statsstr}')
+
     plt.tight_layout()
-    refig.savefig(
-        os.path.join(reportdir, f"{savingkw}_multispeed_RE.png"),
-        dpi=300,
-        bbox_inches="tight",
-    )
-    plt.close(refig)
 
-    return demoanthrophys
-
+    return stat_comparison, demoanthrophysfig, normfigs, refig
 
 def anova2onerm_0d_and_posthocs(datadf, dv="", within="", between="", subject=""):
     """
@@ -355,6 +347,7 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
 
     Returns:
     disc_comp (dict): A dictionary containing the results of the statistical tests.
+    figs (dict): A dictionary containing the figures generated for normality checks.
     """
 
     # Get kwargs
@@ -405,7 +398,7 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
                 ax=axes[labi],
                 markeredgecolor=colours[labi],
                 markerfacecolor=colours[labi],
-                line='r',
+                line="r",
             )
             # This is so goofy but sm.qqplot doesn't take a line colour argument and I need to change it here
             axes[labi].get_lines()[1].set_color("black")
@@ -425,7 +418,7 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
                     + str(np.round(disc_comp[key]["normality"][str(labi)]["W_stat"], 3))
                     + "; p = "
                     + str(np.round(disc_comp[key]["normality"][str(labi)]["p"], 3))
-            )
+                )
 
         figs[key].suptitle(key)
         plt.tight_layout()
@@ -815,8 +808,7 @@ def write_0DmixedANOVA_statstr(
     return statstr
 
 
-def write_spm_stats_str(spmobj, mode='full'):
-
+def write_spm_stats_str(spmobj, mode="full"):
     """
     Generate a string representation of SPM (Statistical Parametric Mapping) statistics.
 
@@ -832,39 +824,38 @@ def write_spm_stats_str(spmobj, mode='full'):
     """
 
     # Make sure mode is full, stat or p
-    if mode not in ['full', 'stat', 'p']:
-        raise ValueError('mode must be either full, stat or p')
+    if mode not in ["full", "stat", "p"]:
+        raise ValueError("mode must be either full, stat or p")
 
     # Initialise statsstr
-    statsstr = ''
+    statsstr = ""
 
     # Add stat value
-    if mode == 'full' or mode == 'stat':
-        statsstr = f'{np.round(spmobj.zstar, 2)}'
+    if mode == "full" or mode == "stat":
+        statsstr = f"{np.round(spmobj.zstar, 2)}"
 
     # Add p value
-    if mode == 'full' or mode == 'p':
+    if mode == "full" or mode == "p":
         if len(spmobj.p) == 1:
             if spmobj.p[0] < 0.001:
-                statsstr += f', p < 0.001'
+                statsstr += ", p < 0.001"
             else:
-                statsstr += f', p = {np.round(spmobj.p[0], 3)}'
+                statsstr += f", p = {np.round(spmobj.p[0], 3)}"
         elif len(spmobj.p) > 1:
-            statsstr += ', p = ['
+            statsstr += ", p = ["
             for i, p in enumerate(spmobj.p):
                 if i > 0:
-                    statsstr += ', '
+                    statsstr += ", "
                 if p < 0.001:
-                    statsstr += f'< 0.001'
+                    statsstr += "< 0.001"
                 else:
-                    statsstr += f'{np.round(p, 3)}'
-            statsstr += ']'
+                    statsstr += f"{np.round(p, 3)}"
+            statsstr += "]"
 
     return statsstr
 
 
 def add_sig_spm_cluster_patch(ax, spmobj, tscaler=1):
-
     """
     Add patches to a plot to indicate significant clusters from SPM (Statistical Parametric Mapping) analysis.
 
@@ -876,6 +867,13 @@ def add_sig_spm_cluster_patch(ax, spmobj, tscaler=1):
 
     for sigcluster in spmobj.clusters:
         ylim = ax.get_ylim()
-        ax.add_patch(plt.Rectangle((sigcluster.endpoints[0] * tscaler, ylim[0]),
-                                   (sigcluster.endpoints[1] - sigcluster.endpoints[0]) * tscaler,
-                                   ylim[1] - ylim[0], color='grey', alpha=0.5, linestyle=''))
+        ax.add_patch(
+            plt.Rectangle(
+                (sigcluster.endpoints[0] * tscaler, ylim[0]),
+                (sigcluster.endpoints[1] - sigcluster.endpoints[0]) * tscaler,
+                ylim[1] - ylim[0],
+                color="grey",
+                alpha=0.5,
+                linestyle="",
+            )
+        )
