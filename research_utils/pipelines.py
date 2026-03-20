@@ -17,7 +17,7 @@ TODO. Test run_0D_ANOVA2onerm in clustering repo
 
 # %% Imports
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -152,7 +152,7 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
         if varname == "Time10Ks" or varname == "Sess2_times":
             # Convert to datetime and keep just mm:ss
             yticks = [
-                str(datetime.timedelta(seconds=x)) for x in axs[vari].get_yticks()
+                str(timedelta(seconds=x)) for x in axs[vari].get_yticks()
             ]
             yticks = [x[x.find(":") + 1:] for x in yticks]
 
