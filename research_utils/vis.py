@@ -14,43 +14,37 @@ from research_utils.statistics import (
 def visualise_0D_ANOVA2onerm(
     datadf,
     stat_comp,
-    varname,
-    rmlabels,
-    colours,
-    title,
-    ylabel,
-    group_names="",
-    within_factor="",
-    between_factor="",
-    within_label="",
-    between_label="",
-    write_between=True,
-    write_within=True,
-    write_interaction=True,
+    **kwargs
 ):
     """ """
 
-    if within_factor == "":
-        within_factor = "within"
-    if between_factor == "":
-        between_factor = "between"
-    if within_label == "":
-        within_label = "W"
-    if between_label == "":
-        between_label = "B"
+    # Get kwargs
+    title = kwargs.get("title", datadf.columns[0])
+    ylabel = kwargs.get("ylabel", "")
+    within_factor = kwargs.get("within_factor", datadf.columns[1])
+    between_factor = kwargs.get("between_factor", datadf.columns[2])
+    within_label = kwargs.get("within_label", within_factor[0].upper())
+    between_label = kwargs.get("between_label", between_factor[0].upper())
+    rm_names = kwargs.get("rm_names", np.unique(datadf[within_factor].values))
+    group_names = kwargs.get("group_names", [str(x) for x in datadf[between_factor].unique()])
+    group_colours = kwargs.get("group_colours", sns.color_palette("Set2", n_colors=len(group_names)))
+    write_within = kwargs.get("write_within", True)
+    write_between = kwargs.get("write_between", True)
+    write_interaction = kwargs.get("write_interaction", True)
+
 
     # Plot results
     fig, axs = plt.subplots(1, 3, figsize=(11, 3))
     axs = axs.flatten()
 
-    for rmi, rm in enumerate(rmlabels):
+    for rmi, rm in enumerate(rm_names):
         # Violin plot
         sns.violinplot(
             ax=axs[rmi],
             x=between_factor,
-            y=varname,
+            y=datadf[datadf.columns[0]],
             data=datadf.loc[datadf[within_factor] == rm],
-            palette=colours,
+            palette=group_colours,
             legend=False,
         )
         # Xticks
@@ -70,7 +64,7 @@ def visualise_0D_ANOVA2onerm(
                 within_factor,
                 rm,
             )
-            axs[rmi].set_xlabel(f"C: {statsstr}", fontsize=10)
+            axs[rmi].set_xlabel(f"{between_label}: {statsstr}", fontsize=10)
 
         else:
             axs[rmi].set_xlabel(" ", fontsize=10)
@@ -113,20 +107,21 @@ def visualise_0D_ANOVA2onerm(
 def plot_0D_ANOVA2onerm_within_effect(
     datadf,
     stat_comparison,
-    varname,
-    rmlabels,
-    rm_colours,
-    title,
-    ylabel,
-    ax,
-    within_factor,
+    **kwargs
 ):
     """ """
 
-    # TODO.  Check here there are direct references to segments that need to be replaced with the rmlabels
+    # Get kwargs
+    ax = kwargs.get("ax", plt.gca())
+    title = kwargs.get("title", datadf.columns[0])
+    ylabel = kwargs.get("ylabel", "")
+    within_factor = kwargs.get("within_factor", datadf.columns[1])
+    rm_names = kwargs.get("rm_names", np.unique(datadf[within_factor].values))
+    rm_colours = kwargs.get("rm_colours", sns.color_palette("Set2", n_colors=len(rm_names)))
+
 
     # Create segment figure
-    sns.violinplot(x=within_factor, y=varname, data=datadf, palette=rm_colours, ax=ax)
+    sns.violinplot(x=within_factor, y=datadf.columns[0], data=datadf, palette=rm_colours, ax=ax)
 
     # xlabeloff
     ax.set_xlabel("")
@@ -156,13 +151,13 @@ def plot_0D_ANOVA2onerm_within_effect(
             # Get the x position as the mean of the xticks
             x = np.mean(
                 [
-                    xticks[rmlabels.index(contrast["A"])],
-                    xticks[rmlabels.index(contrast["B"])],
+                    xticks[rm_names.index(contrast["A"])],
+                    xticks[rm_names.index(contrast["B"])],
                 ]
             )
 
             # Annotate stats if mid, put it at the bottom and two lines
-            if contrast["A"] == "mid" or contrast["B"] == "mid":
+            if contrast["A"] == rm_names[1] or contrast["B"] == rm_names[1]:
                 y = ylim[0]
                 if contrast["p-corr"] < 0.001:
                     strstats = (
@@ -193,26 +188,26 @@ def plot_0D_ANOVA2onerm_within_effect(
 
             # Hline to indicate the significant difference in post hoc test
             if (
-                contrast["A"] == "mid"
-                and contrast["B"] == "end"
-                or contrast["B"] == "mid"
-                and contrast["A"] == "end"
+                contrast["A"] == rm_names[1]
+                and contrast["B"] == rm_names[2]
+                or contrast["B"] == rm_names[1]
+                and contrast["A"] == rm_names[2]
             ):
-                x1 = xticks[rmlabels.index("mid")] + 0.05
-                x2 = xticks[rmlabels.index("end")] - 0.05
+                x1 = xticks[rm_names.index(rm_names[1])] + 0.05
+                x2 = xticks[rm_names.index(rm_names[2])] - 0.05
 
             elif (
-                contrast["A"] == "mid"
-                and contrast["B"] == "start"
-                or contrast["B"] == "mid"
-                and contrast["A"] == "start"
+                contrast["A"] == rm_names[1]
+                and contrast["B"] == rm_names[0]
+                or contrast["B"] == rm_names[1]
+                and contrast["A"] == rm_names[0]
             ):
-                x1 = xticks[rmlabels.index("mid")] - 0.05
-                x2 = xticks[rmlabels.index("start")] + 0.05
+                x1 = xticks[rm_names.index(rm_names[1])] - 0.05
+                x2 = xticks[rm_names.index(rm_names[0])] + 0.05
 
             else:
-                x1 = xticks[rmlabels.index("start")] + 0.05
-                x2 = xticks[rmlabels.index("end")] - 0.05
+                x1 = xticks[rm_names.index(rm_names[0])] + 0.05
+                x2 = xticks[rm_names.index(rm_names[2])] - 0.05
 
             # Draw line
             ax.hlines(y, x1, x2, color="k", linewidth=0.5)

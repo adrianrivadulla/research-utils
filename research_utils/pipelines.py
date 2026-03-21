@@ -264,21 +264,24 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
 
 
 def run_0D_ANOVA2onerm(
-    datadict,
-    designfactors,
-    titles,
-    ylabels,
-    group_colours,
-    rmlabels,
-    group_names,
-    between_factor,
-    within_factor,
-    between_label,
-    within_label,
-    within_vis=True,
-    rm_colours=None,
+        datadict,
+        designfactors,
+        between_factor,
+        within_factor,
+        **kwargs
 ):
     """ """
+
+    # Get kwargs
+    titles = kwargs.get("titles", {var: var for var in datadict})
+    ylabels = kwargs.get("ylabels", {var: "" for var in datadict})
+    group_names = kwargs.get("group_names", [str(x) for x in np.unique(designfactors['group'])])
+    group_colours = kwargs.get("group_colours", sns.color_palette("Set2", len(group_names)))
+    rm_names = kwargs.get("rm_names", np.unique(designfactors['rm']))
+    rm_colours = kwargs.get("rm_colours", sns.color_palette("Set2", len(rm_names)))
+    within_label = kwargs.get("within_label", within_factor[0].upper())
+    between_label = kwargs.get("between_label", between_factor[0].upper())
+    within_vis = kwargs.get("within_vis", True)
 
     figdict = {}
     stat_comparison = {}
@@ -290,10 +293,8 @@ def run_0D_ANOVA2onerm(
         )
         withinaxs = withinaxs.flatten()
 
-        if rm_colours is None:
-            rm_colours = sns.color_palette("Set2", len(rmlabels))
-
     for vari, varname in enumerate(datadict):
+
         # Get data
         df = pd.DataFrame(
             {
@@ -317,12 +318,11 @@ def run_0D_ANOVA2onerm(
         figdict[f"{varname}_ANOVA2onerm"] = visualise_0D_ANOVA2onerm(
             df,
             stat_comparison[varname],
-            varname,
-            rmlabels,
-            group_colours,
-            titles[varname],
-            ylabels[varname],
+            rm_names=rm_names,
+            title=titles[varname],
+            ylabel=ylabels[varname],
             group_names=group_names,
+            group_colours=group_colours,
             within_factor=within_factor,
             between_factor=between_factor,
             within_label=within_label,
@@ -334,13 +334,11 @@ def run_0D_ANOVA2onerm(
             _ = plot_0D_ANOVA2onerm_within_effect(
                 df,
                 stat_comparison[varname],
-                varname,
-                rmlabels,
-                rm_colours,
-                titles[varname],
-                ylabels[varname],
-                withinaxs[vari],
-                within_factor,
+                ax=withinaxs[vari],
+                title=titles[varname],
+                ylabel=ylabels[varname],
+                rm_names=rm_names,
+                rm_colours=rm_colours,
             )
 
     if within_vis:
