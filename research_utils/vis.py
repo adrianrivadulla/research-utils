@@ -1,11 +1,12 @@
 # %% Imports
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 from research_utils.statistics import (
     write_0Dposthoc_statstr,
     write_0DmixedANOVA_statstr,
 )
+import seaborn as sns
+import spm1d
 
 
 # %% Functions
