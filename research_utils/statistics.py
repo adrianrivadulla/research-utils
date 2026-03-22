@@ -99,8 +99,8 @@ def anova2onerm_0d_and_posthocs(datadf, dv="", within="", between="", subject=""
                 confidence=0.95,
             )
 
-        statsdict["posthocs"]["esci95_low"].loc[i] = ci[0]
-        statsdict["posthocs"]["esci95_up"].loc[i] = ci[1]
+        statsdict["posthocs"].loc[i, "esci95_low"] = ci[0]
+        statsdict["posthocs"].loc[i, "esci95_up"] = ci[1]
 
     return statsdict
 

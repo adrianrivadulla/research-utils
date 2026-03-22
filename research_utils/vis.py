@@ -43,6 +43,7 @@ def visualise_0D_ANOVA2onerm(
             ax=axs[rmi],
             x=between_factor,
             y=datadf[datadf.columns[0]],
+            hue=between_factor,
             data=datadf.loc[datadf[within_factor] == rm],
             palette=group_colours,
             legend=False,
@@ -121,7 +122,13 @@ def plot_0D_ANOVA2onerm_within_effect(
 
 
     # Create segment figure
-    sns.violinplot(x=within_factor, y=datadf.columns[0], data=datadf, palette=rm_colours, ax=ax)
+    sns.violinplot(x=within_factor,
+                   y=datadf.columns[0],
+                   hue=within_factor,
+                   data=datadf,
+                   palette=rm_colours,
+                   legend=False,
+                   ax=ax)
 
     # xlabeloff
     ax.set_xlabel("")
