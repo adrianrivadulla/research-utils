@@ -21,10 +21,18 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from research_utils.statistics import anova2onerm_0d_and_posthocs, compare_0D_contvar_indgroups_one_condition, write_0Dposthoc_statstr, write_0DmixedANOVA_statstr
+from research_utils.statistics import (
+    anova2onerm_0d_and_posthocs,
+    compare_0D_contvar_indgroups_one_condition,
+    write_0Dposthoc_statstr,
+    write_0DmixedANOVA_statstr,
+    SPM_ANOVA2onerm,
+)
 from research_utils.vis import (
     visualise_0D_ANOVA2onerm,
     plot_0D_ANOVA2onerm_within_effect,
+    vis_SPM_ANOVA2onerm_between_and_x_effects,
+    vis_SPM_ANOVA2onerm_within_effect,
 )
 import seaborn as sns
 from scipy import stats
@@ -345,3 +353,55 @@ def run_0D_ANOVA2onerm(
         figdict["discvars_within_effect"].tight_layout()
 
     return figdict, stat_comparison
+
+
+def run_SPM_ANOVA2onerm(datadict, designfactors, **kwargs):
+    """ """
+
+    # Get kwargs
+    spm_random_seed = kwargs.get("SPM_random_seed", None)
+    titles = kwargs.get("titles", {key: key for key in datadict.keys()})
+    group_names = kwargs.get("group_names", np.unique(designfactors["group"]))
+    group_colours = kwargs.get("group_colours", sns.color_palette("Set2", n_colors=len(group_names)))
+    between_label = kwargs.get("between_label", "B")
+    within_label = kwargs.get("within_label", "W")
+    rm_names = kwargs.get("rm_names", np.unique(designfactors["rm"]))
+    ylabels = kwargs.get("ylabels", {key: "" for key in datadict.keys()})
+    rm_fig_rows = kwargs.get("rm_fig_rows", 1)
+    rm_fig_cols = kwargs.get("rm_fig_cols", len(rm_names))
+    rm_colours = kwargs.get("rm_colours", sns.color_palette("Set2", n_colors=len(rm_names)))
+    vline_var = kwargs.get("vline_var", None)
+
+    stat_comparison, spmfigs = SPM_ANOVA2onerm(datadict, designfactors, random_seed=spm_random_seed, rm_names=rm_names)
+
+    # TODO. Keep this here for now for debugging
+    # stat_comparison = np.load(f"Fatigue_kinematics_SPM_ANOVA2onerm.npy", allow_pickle=True).item()
+
+    group_inter_figs = vis_SPM_ANOVA2onerm_between_and_x_effects(
+        datadict,
+        designfactors,
+        stat_comparison,
+        rm_names=rm_names,
+        suptitles=titles,
+        ylabels=ylabels,
+        group_names=group_names,
+        colours=group_colours,
+        between_label=between_label,
+        within_label=within_label,
+        vline_var=vline_var,
+    )
+
+    rm_fig = vis_SPM_ANOVA2onerm_within_effect(
+        datadict,
+        designfactors,
+        stat_comparison,
+        titles=titles,
+        ylabels=ylabels,
+        rm_names=rm_names,
+        fig_rows=rm_fig_rows,
+        fig_cols=rm_fig_cols,
+        colours=rm_colours,
+        vline_var=vline_var
+    )
+
+    return stat_comparison, spmfigs, group_inter_figs, rm_fig

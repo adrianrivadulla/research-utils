@@ -1,9 +1,9 @@
-import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
 import pingouin as pg
+from research_utils.vis import plot_spm_test
 from scikit_posthocs import posthoc_ttest, posthoc_dunn
 from scipy import stats
 import seaborn as sns
@@ -31,6 +31,143 @@ Revise namings and move figure saving logic outside of functions
 """
 # TODO.
 
+def SPM_ANOVA2onerm(datadict, designfactors, random_seed=None, **kwargs):
+    """
+    """
+
+    # Get kwargs
+    rm_names = kwargs.get("rm_names", np.unique(designfactors["rm"]))
+
+    stat_comparison = {}
+    figs = {}
+
+    if random_seed is not None:
+        np.random.seed(random_seed)
+
+    for vari, var in enumerate(datadict.keys()):
+        stat_comparison[var] = {}
+
+        now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"\n\n[{now}] - Conducting ANOVA2onerm for {var}...\n")
+
+        # Replace string labels in segments and pt with integers
+        rmcodes = pd.Categorical(designfactors["rm"], categories=rm_names, ordered=True).codes
+        ptcodes = pd.Categorical(designfactors["ptids"]).codes
+
+        # Conduct SPM analysis
+        spmlist = spm1d.stats.nonparam.anova2onerm(datadict[var], designfactors["group"], rmcodes, ptcodes)
+
+        stat_comparison[var]["ANOVA2onerm"] = spmlist.inference(alpha=0.05, iterations=1000)
+
+        print(stat_comparison[var]["ANOVA2onerm"])
+
+        # Post hoc tests and figures
+        stat_comparison[var]["posthocs"] = {}
+
+        # Follow up with post-hoc tests if group effects are found
+        if stat_comparison[var]["ANOVA2onerm"][0].h0reject:
+
+            now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] - Group effect found for {var}, conducting post-hoc tests...\n")
+            stat_comparison[var]["posthocs"]["group"] = {}
+
+            # For each repeated measure
+            for rmfi, rmfactor in enumerate(rm_names):
+                print(f'RM {rmfactor}\n')
+                stat_comparison[var]["posthocs"]["group"][rm_names[rmfi]] = {}
+
+                # Get data
+                Y = []
+                for group in np.unique(designfactors["group"]):
+                    # Get indices of clust at current measure
+                    gridcs = np.where((designfactors["rm"] == rmfactor) & (designfactors["group"] == group))[0]
+
+                    # Append data to groups
+                    Y.append(datadict[var][gridcs, :])
+
+                # SnPM ttest
+                snpm = spm1d.stats.nonparam.ttest2(Y[0], Y[1])
+                snpmi = snpm.inference(alpha=0.05 / len(rm_names), two_tailed=True, iterations=1000)
+                print(snpmi)
+
+                # Add snpmi to dictionary
+                stat_comparison[var]["posthocs"]["group"][rmfactor]["snpm_ttest2"] = snpmi
+
+                # SPM figure for current posthoc test
+                figs[f"{var}_posthoc_group_at_{rmfactor}"] = plot_spm_test(snpmi, f"{var}_posthoc_group_at_{rmfactor}")
+
+        # RM factor effect
+        if stat_comparison[var]["ANOVA2onerm"][1].h0reject:
+
+            now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] - Within effect found for {var}, conducting post-hoc tests...\n")
+            stat_comparison[var]["posthocs"]["rm"] = {}
+
+            # Get all possible combinations of segments
+            rmcombos = list(combinations(range(len(rm_names)), 2))
+
+            # Calculate change in conditions
+            for rmcombo in rmcombos:
+                print(f'RM {rm_names[rmcombo[0]]} v {rm_names[rmcombo[1]]}\n')
+
+                # Get data
+                Y = []
+                for rmf in rmcombo:
+                    # Get indices of clust at current segment
+                    rmfidcs = np.where(rmcodes == rmf)[0]
+
+                    # Append data to Y
+                    Y.append(datadict[var][rmfidcs, :])
+
+                # SnPM ttest
+                snpm = spm1d.stats.nonparam.ttest2(Y[0], Y[1])
+                snpmi = snpm.inference(alpha=0.05 / len(rmcombos), two_tailed=True, iterations=1000)
+                print(snpmi)
+
+                # Add snpmi to dictionary
+                stat_comparison[var]["posthocs"]["rm"][f"{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}"] = {}
+                stat_comparison[var]["posthocs"]["rm"][f"{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}"]["snpm_ttest2"] = snpmi
+
+                # SPM figure for current posthoc test
+                figs[f"{var}_posthoc_rm_{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}"] = plot_spm_test(snpmi, f"{var}_posthoc_rm_{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}")
+
+    # Interaction effect
+        if stat_comparison[var]["ANOVA2onerm"][2].h0reject:
+
+            now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{now}] - Interaction effect found for {var}, conducting post-hoc tests...\n")
+            stat_comparison[var]["posthocs"]["interaction"] = {}
+
+            # Calculate change in conditions
+            for rmfi in range(len(rm_names) - 1):
+                print(f'{rm_names[rmfi + 1]} with respect to {rm_names[rmfi]} by group\n')
+
+                # Get data
+                Ydiff = []
+                for group in np.unique(designfactors["group"]):
+                    gridcs = np.where((designfactors["rm"] == rm_names[rmfi]) & (designfactors["group"] == group))[0]
+                    gridcsnext = np.where(
+                        (designfactors["rm"] == rm_names[rmfi + 1]) & (designfactors["group"] == group)
+                    )[0]
+
+                    # Append data to groups
+                    Ydiff.append(datadict[var][gridcsnext, :] - datadict[var][gridcs, :])
+
+                # SnPM ttest
+                snpm = spm1d.stats.nonparam.ttest2(Ydiff[0], Ydiff[1])
+                snpmi = snpm.inference(alpha=0.05 / (len(rm_names) - 1), two_tailed=True, iterations=1000)
+                print(snpmi)
+
+                # Add snpmi to dictionary
+                stat_comparison[var]["posthocs"]["interaction"][f"{rm_names[rmfi + 1]}_wrt_{rm_names[rmfi]}"] = {}
+                stat_comparison[var]["posthocs"]["interaction"][f"{rm_names[rmfi + 1]}_wrt_{rm_names[rmfi]}"][
+                    "snpm_ttest2"
+                ] = snpmi
+
+                # SPM figure for current posthoc test
+                figs[f"{var}_posthoc_x_{rm_names[rmfi + 1]}_wrt_{rm_names[rmfi]}"] = plot_spm_test(snpmi, f"{var}_posthoc_x_{rm_names[rmfi + 1]}_v_{rm_names[rmfi]}")
+
+    return stat_comparison, figs
 
 
 
@@ -625,26 +762,3 @@ def write_spm_stats_str(spmobj, mode="full"):
 
     return statsstr
 
-
-def add_sig_spm_cluster_patch(ax, spmobj, tscaler=1):
-    """
-    Add patches to a plot to indicate significant clusters from SPM (Statistical Parametric Mapping) analysis.
-
-    Parameters:
-    ax (matplotlib.axes.Axes): The axes object to which the patches will be added.
-    spmobj (object): The SPM object containing the significant clusters.
-    tscaler (float, optional): A scaling factor for the time axis. Defaults to 1.
-    """
-
-    for sigcluster in spmobj.clusters:
-        ylim = ax.get_ylim()
-        ax.add_patch(
-            plt.Rectangle(
-                (sigcluster.endpoints[0] * tscaler, ylim[0]),
-                (sigcluster.endpoints[1] - sigcluster.endpoints[0]) * tscaler,
-                ylim[1] - ylim[0],
-                color="grey",
-                alpha=0.5,
-                linestyle="",
-            )
-        )
