@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import os
 import pandas as pd
 import pingouin as pg
-from research_utils.vis import plot_spm_test
 from scikit_posthocs import posthoc_ttest, posthoc_dunn
 from scipy import stats
 import seaborn as sns
@@ -762,3 +761,16 @@ def write_spm_stats_str(spmobj, mode="full"):
 
     return statsstr
 
+
+def plot_spm_test(spm_obj, suptitle):
+    """
+
+    """
+
+    fig = plt.figure()
+    spm_obj.plot()
+    spm_obj.plot_threshold_label(fontsize=8)
+    spm_obj.plot_p_values(size=10)
+    fig.suptitle(suptitle)
+
+    return fig

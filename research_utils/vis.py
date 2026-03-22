@@ -242,21 +242,6 @@ def plot_0D_ANOVA2onerm_within_effect(datadf, stat_comparison, **kwargs):
     return ax
 
 
-def plot_spm_test(spm_obj, suptitle):
-    """
-
-    """
-
-    fig = plt.figure()
-    spm_obj.plot()
-    spm_obj.plot_threshold_label(fontsize=8)
-    spm_obj.plot_p_values(size=10)
-    fig.suptitle(suptitle)
-
-    return fig
-
-
-
 def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comparison, **kwargs):
     """ """
 
