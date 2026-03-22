@@ -4,6 +4,7 @@ import numpy as np
 from research_utils.statistics import (
     write_0Dposthoc_statstr,
     write_0DmixedANOVA_statstr,
+    write_spm_stats_str,
 )
 import seaborn as sns
 import spm1d
