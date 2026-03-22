@@ -6,6 +6,7 @@ import pingouin as pg
 from scikit_posthocs import posthoc_ttest, posthoc_dunn
 from scipy import stats
 import seaborn as sns
+import spm1d
 import statsmodels.api as sm
 
 
