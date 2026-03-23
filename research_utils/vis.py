@@ -318,7 +318,7 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
                     # Add stats to title
                     curr_title = upperaxs[rmfi].get_title()
                     statstr = f"t* = {write_spm_stats_str(between_posthocs[rmfactor]['snpm_ttest2'], mode='full')}"
-                    upperaxs[rmfi].set_title(f"{curr_title}\n{statstr}", fontsize=10)
+                    upperaxs[rmfi].set_title(f"{curr_title}\n{statstr}")
 
             if rmfi > 0:
                 # Plot change in variable by group
@@ -376,7 +376,7 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
 
                         # Add stats to xlabel
                         statstr = f"t* = {write_spm_stats_str(interaction_posthocs[f'{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}']['snpm_ttest2'], mode='full')}"
-                        loweraxs[-1].set_title(f"{rmfactor} with respect to {rm_names[rmfi - 1]}\n{statstr}", fontsize=10)
+                        loweraxs[-1].set_title(f"{rmfactor} with respect to {rm_names[rmfi - 1]}\n{statstr}")
 
         # Legend
         loweraxs[-1].legend(
