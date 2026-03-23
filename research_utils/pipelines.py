@@ -371,6 +371,7 @@ def run_SPM_ANOVA2onerm(datadict, designfactors, **kwargs):
     rm_fig_cols = kwargs.get("rm_fig_cols", len(rm_names))
     rm_colours = kwargs.get("rm_colours", sns.color_palette("Set2", n_colors=len(rm_names)))
     vline_var = kwargs.get("vline_var", None)
+    rm_spm_patches = kwargs.get("rm_spm_patches", 'anova2onerm')
 
     stat_comparison, spmfigs = SPM_ANOVA2onerm(datadict, designfactors, random_seed=spm_random_seed, rm_names=rm_names)
 
@@ -401,7 +402,8 @@ def run_SPM_ANOVA2onerm(datadict, designfactors, **kwargs):
         fig_rows=rm_fig_rows,
         fig_cols=rm_fig_cols,
         colours=rm_colours,
-        vline_var=vline_var
+        vline_var=vline_var,
+        spm_patches=rm_spm_patches
     )
 
     return stat_comparison, spmfigs, group_inter_figs, rm_fig
