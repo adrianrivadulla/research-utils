@@ -365,18 +365,18 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
                     interaction_posthocs = stat_comparison[var]["posthocs"]["interaction"]
                     if interaction_posthocs[f"{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}"]["snpm_ttest2"].h0reject:
                         # Scaler for sigcluster endpoints
-                        tscaler = loweraxs[rmfi].get_xlim()[1] / (Ydiff.shape[1] - 1)
+                        tscaler = loweraxs[-1].get_xlim()[1] / (Ydiff.shape[1] - 1)
 
                         # Add significant pathces to upperaxs
                         add_sig_spm_cluster_patch(
-                            loweraxs[rmfi],
+                            loweraxs[-1],
                             interaction_posthocs[f"{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}"]["snpm_ttest2"],
                             tscaler=tscaler,
                         )
 
                         # Add stats to xlabel
                         statstr = f"t* = {write_spm_stats_str(interaction_posthocs[f'{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}']['snpm_ttest2'], mode='full')}"
-                        loweraxs[rmfi].set_xlabel(statstr, fontsize=10)
+                        loweraxs[-1].set_title(f"{rmfactor} with respect to {rm_names[rmfi - 1]}\n{statstr}", fontsize=10)
 
         # Legend
         loweraxs[-1].legend(
