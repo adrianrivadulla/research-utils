@@ -244,7 +244,9 @@ def plot_0D_ANOVA2onerm_within_effect(datadf, stat_comparison, **kwargs):
     return ax
 
 
-def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comparison, **kwargs):
+def vis_SPM_ANOVA2onerm_between_and_x_effects(
+    datadict, designfactors, stat_comparison, **kwargs
+):
     """ """
 
     # Get kwargs
@@ -253,7 +255,9 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
     ylabels = kwargs.get("ylabels", {key: "" for key in datadict.keys()})
     xlabels = kwargs.get("xlabels", {key: "Time (%)" for key in datadict.keys()})
     group_names = kwargs.get("group_names", np.unique(designfactors["group"]))
-    colours = kwargs.get("colours", sns.color_palette("Set2", n_colors=len(group_names)))
+    colours = kwargs.get(
+        "colours", sns.color_palette("Set2", n_colors=len(group_names))
+    )
     between_label = kwargs.get("between_label", "B")
     within_label = kwargs.get("within_label", "W")
     vline_var = kwargs.get("vline_var", None)
@@ -261,7 +265,6 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
     figs = {}
 
     for vari, var in enumerate(datadict.keys()):
-
         # Prepare data for SPM mean and std plots
         figs[var] = plt.figure()
         figs[var].set_size_inches(10, 5)
@@ -274,13 +277,15 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
 
         # Extract relevant stats from stat_comparison for current variable
         for rmfi, rmfactor in enumerate(rm_names):
-
             # Create axis in group and interaction figure
             upperaxs.append(figs[var].add_subplot(topgrid[0, rmfi]))
 
             # Plot mean and std curves
             for group in np.unique(designfactors["group"]):
-                idcs = np.where((designfactors["group"] == group) & (designfactors["rm"] == rmfactor))[0]
+                idcs = np.where(
+                    (designfactors["group"] == group)
+                    & (designfactors["rm"] == rmfactor)
+                )[0]
 
                 spm1d.plot.plot_mean_sd(
                     datadict[var][idcs, :],
@@ -293,9 +298,16 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
             # Add vertical line (at avge toe off) for each group (outside loop so it doesn't mess the ylims)
             if vline_var is not None:
                 for group in np.unique(designfactors["group"]):
-                    idcs = np.where((designfactors["group"] == group) & (designfactors["rm"] == rmfactor))[0]
+                    idcs = np.where(
+                        (designfactors["group"] == group)
+                        & (designfactors["rm"] == rmfactor)
+                    )[0]
 
-                    upperaxs[rmfi].axvline(x=np.mean(vline_var[idcs]) * 100, color=colours[group], linestyle=":")
+                    upperaxs[rmfi].axvline(
+                        x=np.mean(vline_var[idcs]) * 100,
+                        color=colours[group],
+                        linestyle=":",
+                    )
 
             # xlabel
             upperaxs[rmfi].set_xlabel(xlabels[var], fontsize=10)
@@ -306,34 +318,50 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
             # Add patches to upperaxs if significant diffs were found
             if stat_comparison[var]["ANOVA2onerm"][0].h0reject:
                 between_posthocs = stat_comparison[var]["posthocs"]["group"]
+                curr_title = upperaxs[rmfi].get_title()
                 if between_posthocs[rmfactor]["snpm_ttest2"].h0reject:
                     # Scaler for sigcluster endpoints
-                    tscaler = upperaxs[rmfi].get_xlim()[1] / (datadict[var].shape[1] - 1)
+                    tscaler = upperaxs[rmfi].get_xlim()[1] / (
+                        datadict[var].shape[1] - 1
+                    )
 
                     # Add significant pathces to upperaxs
                     add_sig_spm_cluster_patch(
-                        upperaxs[rmfi], between_posthocs[rmfactor]["snpm_ttest2"], tscaler=tscaler
+                        upperaxs[rmfi],
+                        between_posthocs[rmfactor]["snpm_ttest2"],
+                        tscaler=tscaler,
                     )
 
-                    # Add stats to title
-                    curr_title = upperaxs[rmfi].get_title()
+                    # stat and p value for title
                     statstr = f"t* = {write_spm_stats_str(between_posthocs[rmfactor]['snpm_ttest2'], mode='full')}"
-                    upperaxs[rmfi].set_title(f"{curr_title}\n{statstr}")
+
+                else:
+                    # just stat and no p value
+                    statstr = f"t* = {write_spm_stats_str(between_posthocs[rmfactor]['snpm_ttest2'], mode='stat')}"
+
+            # Set title with stats
+            upperaxs[rmfi].set_title(f"{curr_title}\n{statstr}")
 
             if rmfi > 0:
                 # Plot change in variable by group
                 loweraxs.append(figs[var].add_subplot(bottomgrid[0, rmfi - 1]))
 
                 # Add horizontal line at 0
-                loweraxs[-1].axhline(0, color="black", linestyle="-", linewidth=0.5, zorder=1)
+                loweraxs[-1].axhline(
+                    0, color="black", linestyle="-", linewidth=0.5, zorder=1
+                )
 
                 for group in np.unique(designfactors["group"]):
                     # Get indices of group at current measure
-                    idcs = np.where((designfactors["group"] == group) & (designfactors["rm"] == rmfactor))[0]
+                    idcs = np.where(
+                        (designfactors["group"] == group)
+                        & (designfactors["rm"] == rmfactor)
+                    )[0]
 
                     # Get indices of group at previous repeated measure
                     idcsprev = np.where(
-                        (designfactors["rm"] == rm_names[rmfi - 1]) & (designfactors["group"] == group)
+                        (designfactors["rm"] == rm_names[rmfi - 1])
+                        & (designfactors["group"] == group)
                     )[0]
 
                     # Calculate difference in variable between groups
@@ -350,33 +378,56 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
                 # Add vertical lines (at avge toe off) for each group (outside loop so it doesn't mess the ylims)
                 if vline_var is not None:
                     for group in np.unique(designfactors["group"]):
-                        gridcs = np.where((designfactors["rm"] == rmfactor) & (designfactors["group"] == group))[0]
+                        gridcs = np.where(
+                            (designfactors["rm"] == rmfactor)
+                            & (designfactors["group"] == group)
+                        )[0]
 
-                        loweraxs[-1].axvline(x=np.mean(vline_var[gridcs]) * 100, color=colours[group], linestyle=":")
+                        loweraxs[-1].axvline(
+                            x=np.mean(vline_var[gridcs]) * 100,
+                            color=colours[group],
+                            linestyle=":",
+                        )
 
                 # Title
-                loweraxs[-1].set_title(f"{rmfactor} with respect to {rm_names[rmfi - 1]}")
+                loweraxs[-1].set_title(
+                    f"{rmfactor} with respect to {rm_names[rmfi - 1]}"
+                )
 
                 # xlabel
                 loweraxs[-1].set_xlabel(xlabels[var], fontsize=10)
 
                 # Add patches to loweraxs if significant diffs are found
                 if stat_comparison[var]["ANOVA2onerm"][2].h0reject:
-                    interaction_posthocs = stat_comparison[var]["posthocs"]["interaction"]
-                    if interaction_posthocs[f"{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}"]["snpm_ttest2"].h0reject:
+                    interaction_posthocs = stat_comparison[var]["posthocs"][
+                        "interaction"
+                    ]
+                    curr_title = loweraxs[-1].get_title()
+
+                    if interaction_posthocs[
+                        f"{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}"
+                    ]["snpm_ttest2"].h0reject:
                         # Scaler for sigcluster endpoints
                         tscaler = loweraxs[-1].get_xlim()[1] / (Ydiff.shape[1] - 1)
 
                         # Add significant pathces to upperaxs
                         add_sig_spm_cluster_patch(
                             loweraxs[-1],
-                            interaction_posthocs[f"{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}"]["snpm_ttest2"],
+                            interaction_posthocs[
+                                f"{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}"
+                            ]["snpm_ttest2"],
                             tscaler=tscaler,
                         )
 
-                        # Add stats to xlabel
+                        # Stat and p value for title
                         statstr = f"t* = {write_spm_stats_str(interaction_posthocs[f'{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}']['snpm_ttest2'], mode='full')}"
-                        loweraxs[-1].set_title(f"{rmfactor} with respect to {rm_names[rmfi - 1]}\n{statstr}")
+
+                    else:
+                        # just stat and no p value for title
+                        statstr = f"t* = {write_spm_stats_str(interaction_posthocs[f'{rm_names[rmfi]}_wrt_{rm_names[rmfi - 1]}']['snpm_ttest2'], mode='stat')}"
+
+                    # Set title with stats
+                    loweraxs[-1].set_title(f"{curr_title}\n{statstr}")
 
         # Legend
         loweraxs[-1].legend(
@@ -423,7 +474,9 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(datadict, designfactors, stat_comp
     return figs
 
 
-def vis_SPM_ANOVA2onerm_within_effect(datadict, designfactors, stat_comparison, **kwargs):
+def vis_SPM_ANOVA2onerm_within_effect(
+    datadict, designfactors, stat_comparison, **kwargs
+):
     """ """
 
     # Get kwargs
@@ -435,7 +488,7 @@ def vis_SPM_ANOVA2onerm_within_effect(datadict, designfactors, stat_comparison, 
     ylabels = kwargs.get("ylabels", {key: "" for key in datadict.keys()})
     xlabels = kwargs.get("xlabels", {key: "Time (%)" for key in datadict.keys()})
     vline_var = kwargs.get("vline_var", None)
-    spm_patches = kwargs.get("spm_patches", 'anova2onerm')
+    spm_patches = kwargs.get("spm_patches", "anova2onerm")
 
     # Repeated measures
     rmffig, rmfaxs = plt.subplots(fig_rows, fig_cols, figsize=(11, 4.5))
@@ -461,7 +514,9 @@ def vis_SPM_ANOVA2onerm_within_effect(datadict, designfactors, stat_comparison, 
         if vline_var is not None:
             for rmfi, rmfactor in enumerate(rm_names):
                 rmfaxs[vari].axvline(
-                    x=np.mean(vline_var[designfactors["rm"] == rmfactor]) * 100, color=colours[rmfi], linestyle=":"
+                    x=np.mean(vline_var[designfactors["rm"] == rmfactor]) * 100,
+                    color=colours[rmfi],
+                    linestyle=":",
                 )
 
         # Add title to with within ANOVA effect in the title
@@ -469,7 +524,7 @@ def vis_SPM_ANOVA2onerm_within_effect(datadict, designfactors, stat_comparison, 
         rmfaxs[vari].set_title(f"{titles[var]}\n{statsstr}")
 
         # Add patches too if significant diffs are found
-        if spm_patches == 'anova2onerm':
+        if spm_patches == "anova2onerm":
             if stat_comparison[var]["ANOVA2onerm"][1].h0reject:
                 # Scaler for sigcluster endpoints
                 tscaler = rmfaxs[vari].get_xlim()[1] / (datadict[var].shape[1] - 1)
@@ -479,15 +534,15 @@ def vis_SPM_ANOVA2onerm_within_effect(datadict, designfactors, stat_comparison, 
                     rmfaxs[vari].add_patch(
                         plt.Rectangle(
                             (sigcluster.endpoints[0] * tscaler, ylim[0]),
-                            (sigcluster.endpoints[1] - sigcluster.endpoints[0]) * tscaler,
+                            (sigcluster.endpoints[1] - sigcluster.endpoints[0])
+                            * tscaler,
                             ylim[1] - ylim[0],
                             color="grey",
                             alpha=0.5,
                             linestyle="",
                         )
                     )
-        elif spm_patches == 'posthocs':
-
+        elif spm_patches == "posthocs":
             for comparison in stat_comparison[var]["posthocs"]["rm"].values():
                 if comparison["snpm_ttest2"].h0reject:
                     # Scaler for sigcluster endpoints
@@ -498,7 +553,8 @@ def vis_SPM_ANOVA2onerm_within_effect(datadict, designfactors, stat_comparison, 
                         rmfaxs[vari].add_patch(
                             plt.Rectangle(
                                 (sigcluster.endpoints[0] * tscaler, ylim[0]),
-                                (sigcluster.endpoints[1] - sigcluster.endpoints[0]) * tscaler,
+                                (sigcluster.endpoints[1] - sigcluster.endpoints[0])
+                                * tscaler,
                                 ylim[1] - ylim[0],
                                 color="grey",
                                 alpha=0.5,
@@ -509,7 +565,12 @@ def vis_SPM_ANOVA2onerm_within_effect(datadict, designfactors, stat_comparison, 
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.16)
     rmfaxs[-2].legend(
-        rm_names, loc="lower center", bbox_to_anchor=(0.5, 0), ncol=3, bbox_transform=rmffig.transFigure, frameon=False
+        rm_names,
+        loc="lower center",
+        bbox_to_anchor=(0.5, 0),
+        ncol=3,
+        bbox_transform=rmffig.transFigure,
+        frameon=False,
     )
 
     return rmffig
@@ -527,5 +588,9 @@ def add_sig_spm_cluster_patch(ax, spmobj, tscaler=1):
 
     for sigcluster in spmobj.clusters:
         ax.axvspan(
-            sigcluster.endpoints[0] * tscaler, sigcluster.endpoints[1] * tscaler, color="grey", alpha=0.5, linestyle=""
+            sigcluster.endpoints[0] * tscaler,
+            sigcluster.endpoints[1] * tscaler,
+            color="grey",
+            alpha=0.5,
+            linestyle="",
         )
