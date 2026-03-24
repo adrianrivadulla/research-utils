@@ -1,7 +1,7 @@
 from itertools import combinations
 import matplotlib.pyplot as plt
+import natsort
 import numpy as np
-import os
 import pandas as pd
 import pingouin as pg
 from scikit_posthocs import posthoc_ttest, posthoc_dunn
@@ -32,9 +32,9 @@ Revise namings and move figure saving logic outside of functions
 """
 # TODO.
 
+
 def SPM_ANOVA2onerm(datadict, designfactors, random_seed=None, **kwargs):
-    """
-    """
+    """ """
 
     # Get kwargs
     rm_names = kwargs.get("rm_names", np.unique(designfactors["rm"]))
@@ -52,13 +52,19 @@ def SPM_ANOVA2onerm(datadict, designfactors, random_seed=None, **kwargs):
         print(f"\n\n[{now}] - Conducting ANOVA2onerm for {var}...\n")
 
         # Replace string labels in segments and pt with integers
-        rmcodes = pd.Categorical(designfactors["rm"], categories=rm_names, ordered=True).codes
+        rmcodes = pd.Categorical(
+            designfactors["rm"], categories=rm_names, ordered=True
+        ).codes
         ptcodes = pd.Categorical(designfactors["ptids"]).codes
 
         # Conduct SPM analysis
-        spmlist = spm1d.stats.nonparam.anova2onerm(datadict[var], designfactors["group"], rmcodes, ptcodes)
+        spmlist = spm1d.stats.nonparam.anova2onerm(
+            datadict[var], designfactors["group"], rmcodes, ptcodes
+        )
 
-        stat_comparison[var]["ANOVA2onerm"] = spmlist.inference(alpha=0.05, iterations=1000)
+        stat_comparison[var]["ANOVA2onerm"] = spmlist.inference(
+            alpha=0.05, iterations=1000
+        )
 
         print(stat_comparison[var]["ANOVA2onerm"])
 
@@ -67,41 +73,52 @@ def SPM_ANOVA2onerm(datadict, designfactors, random_seed=None, **kwargs):
 
         # Follow up with post-hoc tests if group effects are found
         if stat_comparison[var]["ANOVA2onerm"][0].h0reject:
-
             now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] - Group effect found for {var}, conducting post-hoc tests...\n")
+            print(
+                f"[{now}] - Group effect found for {var}, conducting post-hoc tests...\n"
+            )
             stat_comparison[var]["posthocs"]["group"] = {}
 
             # For each repeated measure
             for rmfi, rmfactor in enumerate(rm_names):
-                print(f'RM {rmfactor}\n')
+                print(f"RM {rmfactor}\n")
                 stat_comparison[var]["posthocs"]["group"][rm_names[rmfi]] = {}
 
                 # Get data
                 Y = []
                 for group in np.unique(designfactors["group"]):
                     # Get indices of clust at current measure
-                    gridcs = np.where((designfactors["rm"] == rmfactor) & (designfactors["group"] == group))[0]
+                    gridcs = np.where(
+                        (designfactors["rm"] == rmfactor)
+                        & (designfactors["group"] == group)
+                    )[0]
 
                     # Append data to groups
                     Y.append(datadict[var][gridcs, :])
 
                 # SnPM ttest
                 snpm = spm1d.stats.nonparam.ttest2(Y[0], Y[1])
-                snpmi = snpm.inference(alpha=0.05 / len(rm_names), two_tailed=True, iterations=1000)
+                snpmi = snpm.inference(
+                    alpha=0.05 / len(rm_names), two_tailed=True, iterations=1000
+                )
                 print(snpmi)
 
                 # Add snpmi to dictionary
-                stat_comparison[var]["posthocs"]["group"][rmfactor]["snpm_ttest2"] = snpmi
+                stat_comparison[var]["posthocs"]["group"][rmfactor]["snpm_ttest2"] = (
+                    snpmi
+                )
 
                 # SPM figure for current posthoc test
-                figs[f"{var}_posthoc_group_at_{rmfactor}"] = plot_spm_test(snpmi, f"{var}_posthoc_group_at_{rmfactor}")
+                figs[f"{var}_posthoc_group_at_{rmfactor}"] = plot_spm_test(
+                    snpmi, f"{var}_posthoc_group_at_{rmfactor}"
+                )
 
         # RM factor effect
         if stat_comparison[var]["ANOVA2onerm"][1].h0reject:
-
             now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] - Within effect found for {var}, conducting post-hoc tests...\n")
+            print(
+                f"[{now}] - Within effect found for {var}, conducting post-hoc tests...\n"
+            )
             stat_comparison[var]["posthocs"]["rm"] = {}
 
             # Get all possible combinations of segments
@@ -109,7 +126,7 @@ def SPM_ANOVA2onerm(datadict, designfactors, random_seed=None, **kwargs):
 
             # Calculate change in conditions
             for rmcombo in rmcombos:
-                print(f'RM {rm_names[rmcombo[0]]} v {rm_names[rmcombo[1]]}\n')
+                print(f"RM {rm_names[rmcombo[0]]} v {rm_names[rmcombo[1]]}\n")
 
                 # Get data
                 Y = []
@@ -122,54 +139,82 @@ def SPM_ANOVA2onerm(datadict, designfactors, random_seed=None, **kwargs):
 
                 # SnPM ttest
                 snpm = spm1d.stats.nonparam.ttest2(Y[0], Y[1])
-                snpmi = snpm.inference(alpha=0.05 / len(rmcombos), two_tailed=True, iterations=1000)
+                snpmi = snpm.inference(
+                    alpha=0.05 / len(rmcombos), two_tailed=True, iterations=1000
+                )
                 print(snpmi)
 
                 # Add snpmi to dictionary
-                stat_comparison[var]["posthocs"]["rm"][f"{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}"] = {}
-                stat_comparison[var]["posthocs"]["rm"][f"{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}"]["snpm_ttest2"] = snpmi
+                stat_comparison[var]["posthocs"]["rm"][
+                    f"{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}"
+                ] = {}
+                stat_comparison[var]["posthocs"]["rm"][
+                    f"{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}"
+                ]["snpm_ttest2"] = snpmi
 
                 # SPM figure for current posthoc test
-                figs[f"{var}_posthoc_rm_{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}"] = plot_spm_test(snpmi, f"{var}_posthoc_rm_{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}")
+                figs[
+                    f"{var}_posthoc_rm_{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}"
+                ] = plot_spm_test(
+                    snpmi,
+                    f"{var}_posthoc_rm_{rm_names[rmcombo[0]]}_v_{rm_names[rmcombo[1]]}",
+                )
 
-    # Interaction effect
+        # Interaction effect
         if stat_comparison[var]["ANOVA2onerm"][2].h0reject:
-
             now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-            print(f"[{now}] - Interaction effect found for {var}, conducting post-hoc tests...\n")
+            print(
+                f"[{now}] - Interaction effect found for {var}, conducting post-hoc tests...\n"
+            )
             stat_comparison[var]["posthocs"]["interaction"] = {}
 
             # Calculate change in conditions
             for rmfi in range(len(rm_names) - 1):
-                print(f'{rm_names[rmfi + 1]} with respect to {rm_names[rmfi]} by group\n')
+                print(
+                    f"{rm_names[rmfi + 1]} with respect to {rm_names[rmfi]} by group\n"
+                )
 
                 # Get data
                 Ydiff = []
                 for group in np.unique(designfactors["group"]):
-                    gridcs = np.where((designfactors["rm"] == rm_names[rmfi]) & (designfactors["group"] == group))[0]
+                    gridcs = np.where(
+                        (designfactors["rm"] == rm_names[rmfi])
+                        & (designfactors["group"] == group)
+                    )[0]
                     gridcsnext = np.where(
-                        (designfactors["rm"] == rm_names[rmfi + 1]) & (designfactors["group"] == group)
+                        (designfactors["rm"] == rm_names[rmfi + 1])
+                        & (designfactors["group"] == group)
                     )[0]
 
                     # Append data to groups
-                    Ydiff.append(datadict[var][gridcsnext, :] - datadict[var][gridcs, :])
+                    Ydiff.append(
+                        datadict[var][gridcsnext, :] - datadict[var][gridcs, :]
+                    )
 
                 # SnPM ttest
                 snpm = spm1d.stats.nonparam.ttest2(Ydiff[0], Ydiff[1])
-                snpmi = snpm.inference(alpha=0.05 / (len(rm_names) - 1), two_tailed=True, iterations=1000)
+                snpmi = snpm.inference(
+                    alpha=0.05 / (len(rm_names) - 1), two_tailed=True, iterations=1000
+                )
                 print(snpmi)
 
                 # Add snpmi to dictionary
-                stat_comparison[var]["posthocs"]["interaction"][f"{rm_names[rmfi + 1]}_wrt_{rm_names[rmfi]}"] = {}
-                stat_comparison[var]["posthocs"]["interaction"][f"{rm_names[rmfi + 1]}_wrt_{rm_names[rmfi]}"][
-                    "snpm_ttest2"
-                ] = snpmi
+                stat_comparison[var]["posthocs"]["interaction"][
+                    f"{rm_names[rmfi + 1]}_wrt_{rm_names[rmfi]}"
+                ] = {}
+                stat_comparison[var]["posthocs"]["interaction"][
+                    f"{rm_names[rmfi + 1]}_wrt_{rm_names[rmfi]}"
+                ]["snpm_ttest2"] = snpmi
 
                 # SPM figure for current posthoc test
-                figs[f"{var}_posthoc_x_{rm_names[rmfi + 1]}_wrt_{rm_names[rmfi]}"] = plot_spm_test(snpmi, f"{var}_posthoc_x_{rm_names[rmfi + 1]}_v_{rm_names[rmfi]}")
+                figs[f"{var}_posthoc_x_{rm_names[rmfi + 1]}_wrt_{rm_names[rmfi]}"] = (
+                    plot_spm_test(
+                        snpmi,
+                        f"{var}_posthoc_x_{rm_names[rmfi + 1]}_v_{rm_names[rmfi]}",
+                    )
+                )
 
     return stat_comparison, figs
-
 
 
 def anova2onerm_0d_and_posthocs(datadf, dv="", within="", between="", subject=""):
@@ -216,7 +261,7 @@ def anova2onerm_0d_and_posthocs(datadf, dv="", within="", between="", subject=""
     statsdict["posthocs"]["esci95_low"] = np.nan
     statsdict["posthocs"]["esci95_up"] = np.nan
     for i, row in statsdict["posthocs"].iterrows():
-        if row["Paired"] == True:
+        if row["Paired"]:
             ci = pg.compute_esci(
                 row["cohen"],
                 nx=len(datadf[subject].unique()),
@@ -410,11 +455,10 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
     return disc_comp, figs
 
 
-def comparison_1D_contvar_indgroups_one_condition(
+def compare_1D_contvar_indgroups_one_condition(
     datadict, grouping, title_kword, figdir, colours
 ):
     """
-    TODO. Understand where this is used (not in fatigue)
     Compare continuous variables between independent groups using SPM1D non-parametric tests.
 
     Parameters:
@@ -428,8 +472,8 @@ def comparison_1D_contvar_indgroups_one_condition(
     cont_comp (dict): A dictionary containing the results of the statistical tests.
     """
 
-    # Conduct traditional SPM1D non-param tests
     cont_comp = {}
+    varfigs = {}
 
     for key, values in datadict.items():
         cont_comp[key] = {}
@@ -444,28 +488,21 @@ def comparison_1D_contvar_indgroups_one_condition(
             # Non param ttest
             nonparam_ttest2 = spm1d.stats.nonparam.ttest2(groups[0], groups[1])
             cont_comp[key]["np_ttest2"] = nonparam_ttest2.inference(
-                alpha=0.05, two_tailed=True, iterations=500
+                alpha=0.05, two_tailed=True, iterations=1000
             )
 
             # Vis
-            varfig = plt.figure(figsize=(10, 4))
+            varfigs[f"{key}_np_ttest2"], axs = plt.subplots(1, 2, figsize=(10, 4))
 
             # Average and std patterns by group
-            plt.subplot(1, 2, 1)
             for group, colour in zip(groups, colours):
-                spm1d.plot.plot_mean_sd(group, linecolor=colour, facecolor=colour)
-            plt.title(key)
+                spm1d.plot.plot_mean_sd(
+                    group, linecolor=colour, facecolor=colour, ax=axs[0]
+                )
+            axs[0].title(key)
 
-            plt.subplot(1, 2, 2)
-
-            cont_comp[key]["np_ttest2"].plot()
-            cont_comp[key]["np_ttest2"].plot_threshold_label(fontsize=8)
-            cont_comp[key]["np_ttest2"].plot_p_values()
-            plt.title(f"np_ttest2 {key}")
-
+            plot_spm_test(cont_comp[key]["np_ttest2"], title=key, ax=axs[1])
             plt.tight_layout()
-            varfig.savefig(os.path.join(figdir, f"{title_kword}_{key}_np_ttest2.png"))
-            plt.close(varfig)
 
         elif len(groups) > 2:
             # Non parametric ANOVA
@@ -475,22 +512,17 @@ def comparison_1D_contvar_indgroups_one_condition(
             )
 
             # Vis
-            varfig = plt.figure(figsize=(10, 4))
+            varfigs[f"{key}_np_ttest2"], axs = plt.subplots(1, 2, figsize=(10, 4))
 
             # Average and std patterns by group
-            plt.subplot(1, 2, 1)
             for group, colour in zip(groups, colours):
-                spm1d.plot.plot_mean_sd(group, linecolor=colour, facecolor=colour)
+                spm1d.plot.plot_mean_sd(
+                    group, linecolor=colour, facecolor=colour, ax=axs[0]
+                )
                 plt.title(key)
 
-            plt.subplot(1, 2, 2)
-            cont_comp[key]["np_ANOVA"].plot()
-            cont_comp[key]["np_ANOVA"].plot_threshold_label(fontsize=8)
-            cont_comp[key]["np_ANOVA"].plot_p_values()
-            plt.title(f"np_ANOVA {key}")
+            plot_spm_test(cont_comp[key]["np_ANOVA"], title=key, ax=axs[1])
             plt.tight_layout()
-            varfig.savefig(os.path.join(figdir, f"{title_kword}_{key}_np_ANOVA.png"))
-            plt.close(varfig)
 
             if cont_comp[key]["np_ANOVA"].h0reject:
                 # Adjust alpha for the number of comparisons to be performed
@@ -502,12 +534,14 @@ def comparison_1D_contvar_indgroups_one_condition(
 
                 # Set number of subplots for comparison
                 if len(paircomp) == 3:
-                    fig, axes = plt.subplots(2, 3)
-                    fig.set_size_inches(11, 6)
+                    varfigs[f"{key}_posthocs"], axes = plt.subplots(
+                        2, 3, figsize=(11, 6)
+                    )
 
                 elif len(paircomp) == 6:
-                    fig, axes = plt.subplots(4, 3)
-                    fig.set_size_inches(11, 12)
+                    varfigs[f"{key}_posthocs"], axes = plt.subplots(
+                        4, 3, figsize=(11, 12)
+                    )
 
                 else:
                     print("I am not ready for so many plots. Figure it out.")
@@ -549,21 +583,16 @@ def comparison_1D_contvar_indgroups_one_condition(
                     axes[pairi].set_title(str(pair))
 
                     pairkw = f"{str(pair[0])}_{str(pair[1])}"
-
-                    cont_comp[key]["post_hoc_np_ttest2"][pairkw].plot(ax=axes[axi + 3])
-                    cont_comp[key]["post_hoc_np_ttest2"][pairkw].plot_threshold_label(
-                        ax=axes[axi + 3], fontsize=8
-                    )
-                    cont_comp[key]["post_hoc_np_ttest2"][pairkw].plot_p_values(
-                        ax=axes[axi + 3]
+                    plot_spm_test(
+                        cont_comp[key]["post_hoc_np_ttest2"][pairkw],
+                        title=str(pair),
+                        ax=axes[axi + 3],
                     )
 
-                fig.suptitle(f"{title_kword}_{key}")
+                varfigs[f"{key}_posthocs"].suptitle(f"{title_kword}_{key}")
                 plt.tight_layout()
-                plt.savefig(os.path.join(figdir, f"{title_kword}_{key}_posthoc.png"))
-                plt.close(plt.gcf())
 
-    return cont_comp
+    return cont_comp, varfigs
 
 
 def write_0Dposthoc_statstr(
@@ -764,15 +793,15 @@ def write_spm_stats_str(spmobj, mode="full"):
     return statsstr
 
 
-def plot_spm_test(spm_obj, suptitle):
-    """
+def plot_spm_test(spm_obj, title, ax=None):
+    """ """
+    if ax is None:
+        fig, ax = plt.subplots()
+        return_fig = True
+    spm_obj.plot(ax=ax)
+    spm_obj.plot_threshold_label(ax=ax, fontsize=8)
+    spm_obj.plot_p_values(ax=ax, size=10)
+    ax.set_title(title)
 
-    """
-
-    fig = plt.figure()
-    spm_obj.plot()
-    spm_obj.plot_threshold_label(fontsize=8)
-    spm_obj.plot_p_values(size=10)
-    fig.suptitle(suptitle)
-
-    return fig
+    if return_fig:
+        return fig
