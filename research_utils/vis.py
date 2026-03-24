@@ -339,8 +339,8 @@ def vis_SPM_ANOVA2onerm_between_and_x_effects(
                     # just stat and no p value
                     statstr = f"t* = {write_spm_stats_str(between_posthocs[rmfactor]['snpm_ttest2'], mode='stat')}"
 
-            # Set title with stats
-            upperaxs[rmfi].set_title(f"{curr_title}\n{statstr}")
+                # Set title with stats
+                upperaxs[rmfi].set_title(f"{curr_title}\n{statstr}")
 
             if rmfi > 0:
                 # Plot change in variable by group
