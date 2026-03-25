@@ -638,7 +638,8 @@ def vis_single_condition_kinematics_comparison(datadict, stat_comparison, **kwar
             ][0]
 
             # Write statstr
-            statstr = f"{stat_test}: {np.round(stat_comparison['0D'][varname][stat_test]['stat'], 2)}, "
+            stat_name = list(stat_comparison["0D"][varname][stat_test].keys())[0]
+            statstr = f"{stat_name} = {np.round(stat_comparison['0D'][varname][stat_test][stat_name], 2)}, "
             if stat_comparison["0D"][varname][stat_test]["p"] < 0.001:
                 statstr += "p < 0.001"
             else:
@@ -690,9 +691,7 @@ def vis_single_condition_kinematics_comparison(datadict, stat_comparison, **kwar
                 )
 
             # title
-            statstr = write_spm_stats_str(
-                stat_comparison["1D"][varname][spmtest], mode="full"
-            )
+            statstr = f"t* = {write_spm_stats_str(stat_comparison['1D'][varname][spmtest], mode='full')}"
             kinaxs[vari].set_title(f"{titles[varname]}\n{statstr}")
 
         # Add ylabel
