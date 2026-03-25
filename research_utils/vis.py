@@ -1,5 +1,6 @@
 # %% Imports
 import matplotlib.pyplot as plt
+import natsort
 import numpy as np
 from research_utils.statistics import (
     write_0Dposthoc_statstr,
@@ -529,7 +530,6 @@ def vis_SPM_ANOVA2onerm_within_effect(
                 # Scaler for sigcluster endpoints
                 tscaler = rmfaxs[vari].get_xlim()[1] / (datadict[var].shape[1] - 1)
 
-                # TODO. Replace with add_sig_spm_cluster_patch function
                 add_sig_spm_cluster_patch(
                     ax=rmfaxs[vari],
                     spmobj=stat_comparison[var]["ANOVA2onerm"][1],
@@ -579,3 +579,131 @@ def add_sig_spm_cluster_patch(ax, spmobj, tscaler=1):
             alpha=0.5,
             linestyle="",
         )
+
+
+def vis_single_condition_kinematics_comparison(datadict, stat_comparison, **kwargs):
+    """ """
+
+    # Get kwargs
+    titles = kwargs.get(
+        "titles",
+        {
+            var: var
+            for var in list(stat_comparison["0D"].keys())
+            + list(stat_comparison["1D"].keys())
+        },
+    )
+    ylabels = kwargs.get("ylabels", {var: "" for var in titles})
+    group_labels = kwargs.get(
+        "group_labels", natsort.natsorted(np.unique(datadict["ptlabels"]["clustlabel"]))
+    )
+    group_names = kwargs.get("group_names", [f"C{int(g)}" for g in group_labels])
+    group_colours = kwargs.get(
+        "group_colours", sns.color_palette("Set2", n_colors=len(group_labels))
+    )
+    vline_var = kwargs.get("vline_var", None)
+
+    # Plot all variables with significant differences indicated
+    kinfig, kinaxs = plt.subplots(2, 4, figsize=(11, 4.5))
+    kinaxs = kinaxs.flatten()
+
+    # Get avge toe off for each cluster to show in the  SPM plots
+    if vline_var is not None:
+        avgeto = []
+        for group_label in group_labels:
+            groupidcs = np.where(datadict["ptlabels"]["clustlabel"] == group_label)[0]
+            avgeto.append(np.round(np.mean(vline_var[groupidcs, :]) * 100, 1))
+
+    for vari, varname in enumerate(titles):
+        # 0D variables
+        if varname in stat_comparison["0D"].keys():
+            # Violin plot
+            sns.violinplot(
+                ax=kinaxs[vari],
+                x=datadict["ptlabels"]["clustlabel"].values,
+                y=datadict[varname].flatten(),
+                hue=datadict["ptlabels"]["clustlabel"].values,
+                palette=group_colours,
+                legend=False,
+            )
+
+            # Xticks
+            kinaxs[vari].set_xticks(group_labels, group_names)
+
+            # Get key which is not normality or homoscedasticity to check for significance
+            stat_test = [
+                key
+                for key in stat_comparison["0D"][varname].keys()
+                if key not in ["normality", "homoscedasticity"]
+            ][0]
+
+            # Write statstr
+            statstr = f"{stat_test}: {np.round(stat_comparison['0D'][varname][stat_test]['stat'], 2)}, "
+            if stat_comparison["0D"][varname][stat_test]["p"] < 0.001:
+                statstr += "p < 0.001"
+            else:
+                statstr += (
+                    f"p = {np.round(stat_comparison['0D'][varname][stat_test]['p'], 3)}"
+                )
+            if stat_comparison["0D"][varname][stat_test]["p"] < 0.05:
+                statstr += f", d = {np.round(stat_comparison['0D'][varname][stat_test]['Cohens_d'], 2)}"
+
+            kinaxs[vari].set_title(f"{titles[varname]}\n{statstr}")
+
+        # 1D variables
+        elif varname in stat_comparison["1D"].keys():
+            groups = []
+
+            for clusti, grouplabel in enumerate(group_labels):
+                clustidcs = np.where(datadict["ptlabels"]["clustlabel"] == grouplabel)[
+                    0
+                ]
+                groups.append(datadict[varname][clustidcs, :])
+
+                # SPM plot
+                spm1d.plot.plot_mean_sd(
+                    groups[-1],
+                    x=np.linspace(0, 100, groups[-1].shape[1]),
+                    linecolor=group_colours[clusti],
+                    facecolor=group_colours[clusti],
+                    ax=kinaxs[vari],
+                )
+
+            # Add vertical line at avge toe off (outside the previous loop so we can get the final ylimits)
+            if vline_var is not None:
+                for groupi, groupavgeto in enumerate(avgeto):
+                    kinaxs[vari].axvline(
+                        x=groupavgeto, color=group_colours[groupi], linestyle=":"
+                    )
+
+            # Add patch to indicate significant differences
+            spmtest = list(stat_comparison["1D"][varname].keys())[0]
+            if stat_comparison["1D"][varname][spmtest].h0reject:
+                # Scaler for sigcluster endpoints
+                tscaler = kinaxs[vari].get_xlim()[1] / (groups[0].shape[1] - 1)
+
+                # Add significant patches
+                add_sig_spm_cluster_patch(
+                    kinaxs[vari],
+                    stat_comparison["1D"][varname][spmtest],
+                    tscaler=tscaler,
+                )
+
+            # title
+            statstr = write_spm_stats_str(
+                stat_comparison["1D"][varname][spmtest], mode="full"
+            )
+            kinaxs[vari].set_title(f"{titles[varname]}\n{statstr}")
+
+        # Add ylabel
+        kinaxs[vari].set_ylabel(ylabels[varname])
+
+        # Add xlabel
+        kinaxs[vari].set_xlabel("Time (%)")
+
+    # Legend
+    # create cluster labels as C and the number
+    kinaxs[-1].legend(group_names, loc="lower right", frameon=False)
+    plt.tight_layout()
+
+    return kinfig

@@ -17,13 +17,15 @@ TODO. Test run_0D_ANOVA2onerm in clustering repo
 
 # %% Imports
 
-from datetime import datetime, timedelta
+from datetime import timedelta
 import matplotlib.pyplot as plt
+import natsort
 import numpy as np
 import pandas as pd
 from research_utils.statistics import (
     anova2onerm_0d_and_posthocs,
     compare_0D_contvar_indgroups_one_condition,
+    compare_1D_contvar_indgroups_one_condition,
     write_0Dposthoc_statstr,
     write_0DmixedANOVA_statstr,
     SPM_ANOVA2onerm,
@@ -33,13 +35,18 @@ from research_utils.vis import (
     plot_0D_ANOVA2onerm_within_effect,
     vis_SPM_ANOVA2onerm_between_and_x_effects,
     vis_SPM_ANOVA2onerm_within_effect,
+    vis_single_condition_kinematics_comparison,
 )
 import seaborn as sns
 from scipy import stats
+import warnings
 
 # %% Functions
 
-def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds, titles, **kwargs):
+
+def run_demoanthrophys_two_groups_comparisons(
+    datasheet, grouping_var, re_speeds, titles, **kwargs
+):
     """
     Compare demographics, anthropometrics and physiological variables between clusters.
 
@@ -49,7 +56,9 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
     # Get kwargs
     ylabels = kwargs.get("ylabels", {var: "" for var in titles})
     group_names = kwargs.get("group_names", np.unique(datasheet[grouping_var]).tolist())
-    group_colours = kwargs.get("group_colours", sns.color_palette("Set2", len(group_names)))
+    group_colours = kwargs.get(
+        "group_colours", sns.color_palette("Set2", len(group_names))
+    )
 
     # Vars without RE
     noRE_vars = [key for key in titles if "RE" not in key]
@@ -86,11 +95,11 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
         )
 
     # Add chi square test
-    stat_comparison['Sex'] = {}
-    stat_comparison['Sex']["chi_test"] = {}
+    stat_comparison["Sex"] = {}
+    stat_comparison["Sex"]["chi_test"] = {}
     (
-        stat_comparison['Sex']["chi_test"]["chi_sq"],
-        stat_comparison['Sex']["chi_test"]["p"],
+        stat_comparison["Sex"]["chi_test"]["chi_sq"],
+        stat_comparison["Sex"]["chi_test"]["p"],
         _,
         _,
     ) = stats.chi2_contingency(sextable)
@@ -116,9 +125,7 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
 
     # Vis variables
     for vari, varname in enumerate(noRE_vars):
-
         if varname == "Sex":
-
             # Bar plot
             sns.barplot(
                 ax=axs[vari],
@@ -159,10 +166,8 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
         # Yticks for Time10Ks
         if varname == "Time10Ks" or varname == "Sess2_times":
             # Convert to datetime and keep just mm:ss
-            yticks = [
-                str(timedelta(seconds=x)) for x in axs[vari].get_yticks()
-            ]
-            yticks = [x[x.find(":") + 1:] for x in yticks]
+            yticks = [str(timedelta(seconds=x)) for x in axs[vari].get_yticks()]
+            yticks = [x[x.find(":") + 1 :] for x in yticks]
 
             # Set new ticks
             axs[vari].set_yticklabels(yticks)
@@ -177,7 +182,9 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
         if varname in stat_comparison.keys():
             # Get key which is not normality or 'homoscedasticity'
             stat_test = [
-                key for key in stat_comparison[varname].keys() if key not in ["normality", "homoscedasticity"]
+                key
+                for key in stat_comparison[varname].keys()
+                if key not in ["normality", "homoscedasticity"]
             ][0]
 
             # Add asterisk to indicate significant differences
@@ -214,57 +221,68 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
 
     # Plot results
     for speedi, speed in enumerate(re_speeds):
-
         # Violin plot
-        sns.violinplot(ax=reaxs[speedi],
-                       x=grouping_var,
-                       y='EE',
-                       data=redf.loc[redf['speed'] == speed],
-                       palette=group_colours,
-                       hue=grouping_var,
-                       legend=False)
+        sns.violinplot(
+            ax=reaxs[speedi],
+            x=grouping_var,
+            y="EE",
+            data=redf.loc[redf["speed"] == speed],
+            palette=group_colours,
+            hue=grouping_var,
+            legend=False,
+        )
 
         # Add C at the start of each xtick
-        reaxs[speedi].set_xticks(reaxs[speedi].get_xticks(),
-                                 [f'C{int(x)}' for x in reaxs[speedi].get_xticks()])
+        reaxs[speedi].set_xticks(
+            reaxs[speedi].get_xticks(),
+            [f"C{int(x)}" for x in reaxs[speedi].get_xticks()],
+        )
 
         # Add stats in xlabel
-        if (stat_comparison['RE']['ANOVA2onerm']['p-unc'].loc[
-            stat_comparison['RE']['ANOVA2onerm']['Source'] == 'clustlabel'].values
-                < 0.05):
-
-            statsstr = write_0Dposthoc_statstr(stat_comparison['RE']['posthocs'],
-                                               f'speed * {grouping_var}',
-                                               'speed',
-                                               speed)
-            reaxs[speedi].set_xlabel(f'C: {statsstr}', fontsize=10)
+        if (
+            stat_comparison["RE"]["ANOVA2onerm"]["p-unc"]
+            .loc[stat_comparison["RE"]["ANOVA2onerm"]["Source"] == "clustlabel"]
+            .values
+            < 0.05
+        ):
+            statsstr = write_0Dposthoc_statstr(
+                stat_comparison["RE"]["posthocs"],
+                f"speed * {grouping_var}",
+                "speed",
+                speed,
+            )
+            reaxs[speedi].set_xlabel(f"C: {statsstr}", fontsize=10)
 
         else:
-            reaxs[speedi].set_xlabel(' ', fontsize=10)
+            reaxs[speedi].set_xlabel(" ", fontsize=10)
 
         # y label
         if speedi == 0:
-            reaxs[speedi].set_ylabel(ylabels['RE'])
+            reaxs[speedi].set_ylabel(ylabels["RE"])
         else:
-            reaxs[speedi].set_ylabel('')
+            reaxs[speedi].set_ylabel("")
 
         # Add title
-        reaxs[speedi].set_title(f'{speed} km/h')
+        reaxs[speedi].set_title(f"{speed} km/h")
 
     # Same y limits
     ylims = [ax.get_ylim() for ax in reaxs]
     for ax in reaxs:
-        ax.set_ylim([min([ylim[0] for ylim in ylims]), max([ylim[1] for ylim in ylims])])
+        ax.set_ylim(
+            [min([ylim[0] for ylim in ylims]), max([ylim[1] for ylim in ylims])]
+        )
 
     # Set suptitle
-    statsstr = write_0DmixedANOVA_statstr(stat_comparison['RE']['ANOVA2onerm'],
-                                          between=grouping_var,
-                                          within='speed',
-                                          betweenlabel='C',
-                                          withinlabel='S')
+    statsstr = write_0DmixedANOVA_statstr(
+        stat_comparison["RE"]["ANOVA2onerm"],
+        between=grouping_var,
+        within="speed",
+        betweenlabel="C",
+        withinlabel="S",
+    )
 
     # Set title
-    refig.suptitle(f'Running economy\n{statsstr}')
+    refig.suptitle(f"Running economy\n{statsstr}")
 
     plt.tight_layout()
 
@@ -272,20 +290,20 @@ def run_demoanthrophys_two_groups_comparisons(datasheet, grouping_var, re_speeds
 
 
 def run_0D_ANOVA2onerm(
-        datadict,
-        designfactors,
-        between_factor,
-        within_factor,
-        **kwargs
+    datadict, designfactors, between_factor, within_factor, **kwargs
 ):
     """ """
 
     # Get kwargs
     titles = kwargs.get("titles", {var: var for var in datadict})
     ylabels = kwargs.get("ylabels", {var: "" for var in datadict})
-    group_names = kwargs.get("group_names", [str(x) for x in np.unique(designfactors['group'])])
-    group_colours = kwargs.get("group_colours", sns.color_palette("Set2", len(group_names)))
-    rm_names = kwargs.get("rm_names", np.unique(designfactors['rm']))
+    group_names = kwargs.get(
+        "group_names", [str(x) for x in np.unique(designfactors["group"])]
+    )
+    group_colours = kwargs.get(
+        "group_colours", sns.color_palette("Set2", len(group_names))
+    )
+    rm_names = kwargs.get("rm_names", np.unique(designfactors["rm"]))
     rm_colours = kwargs.get("rm_colours", sns.color_palette("Set2", len(rm_names)))
     within_label = kwargs.get("within_label", within_factor[0].upper())
     between_label = kwargs.get("between_label", between_factor[0].upper())
@@ -302,7 +320,6 @@ def run_0D_ANOVA2onerm(
         withinaxs = withinaxs.flatten()
 
     for vari, varname in enumerate(datadict):
-
         # Get data
         df = pd.DataFrame(
             {
@@ -362,18 +379,24 @@ def run_SPM_ANOVA2onerm(datadict, designfactors, **kwargs):
     spm_random_seed = kwargs.get("SPM_random_seed", None)
     titles = kwargs.get("titles", {key: key for key in datadict.keys()})
     group_names = kwargs.get("group_names", np.unique(designfactors["group"]))
-    group_colours = kwargs.get("group_colours", sns.color_palette("Set2", n_colors=len(group_names)))
+    group_colours = kwargs.get(
+        "group_colours", sns.color_palette("Set2", n_colors=len(group_names))
+    )
     between_label = kwargs.get("between_label", "B")
     within_label = kwargs.get("within_label", "W")
     rm_names = kwargs.get("rm_names", np.unique(designfactors["rm"]))
     ylabels = kwargs.get("ylabels", {key: "" for key in datadict.keys()})
     rm_fig_rows = kwargs.get("rm_fig_rows", 1)
     rm_fig_cols = kwargs.get("rm_fig_cols", len(rm_names))
-    rm_colours = kwargs.get("rm_colours", sns.color_palette("Set2", n_colors=len(rm_names)))
+    rm_colours = kwargs.get(
+        "rm_colours", sns.color_palette("Set2", n_colors=len(rm_names))
+    )
     vline_var = kwargs.get("vline_var", None)
-    rm_spm_patches = kwargs.get("rm_spm_patches", 'anova2onerm')
+    rm_spm_patches = kwargs.get("rm_spm_patches", "anova2onerm")
 
-    stat_comparison, spmfigs = SPM_ANOVA2onerm(datadict, designfactors, random_seed=spm_random_seed, rm_names=rm_names)
+    stat_comparison, spmfigs = SPM_ANOVA2onerm(
+        datadict, designfactors, random_seed=spm_random_seed, rm_names=rm_names
+    )
 
     # TODO. Keep this here for now for debugging
     # stat_comparison = np.load(f"Fatigue_kinematics_SPM_ANOVA2onerm.npy", allow_pickle=True).item()
@@ -403,7 +426,76 @@ def run_SPM_ANOVA2onerm(datadict, designfactors, **kwargs):
         fig_cols=rm_fig_cols,
         colours=rm_colours,
         vline_var=vline_var,
-        spm_patches=rm_spm_patches
+        spm_patches=rm_spm_patches,
     )
 
     return stat_comparison, spmfigs, group_inter_figs, rm_fig
+
+
+def run_single_condition_comparison(datadict, discvars, contvars, **kwargs):
+    """
+    Compare kinematic variables between two groups at a single speed and visualize the results.
+
+    Parameters:
+    datadict (dict): Dictionary containing the data to be compared.
+    discvars (list): List of discrete variables to be compared.
+    contvars (list): List of continuous variables to be compared.
+    figargs (dict): Dictionary containing figure arguments for plotting.
+
+    Returns:
+    stat_comparison (dict): A dictionary containing the results of the statistical tests.
+    """
+
+    # Get kwargs
+    titles = kwargs.get("titles", {var: var for var in discvars + contvars})
+    ylabels = kwargs.get("ylabels", {var: "" for var in discvars + contvars})
+    vline_var = kwargs.get("vline_var", None)
+
+    # Get group labels and corresponding colours from ['ptlabels'] within datadict
+    group_labels = natsort.natsorted(np.unique(datadict["ptlabels"]["clustlabel"]))
+    group_colours = [
+        datadict["ptlabels"]["colourcode"]
+        .loc[datadict["ptlabels"]["clustlabel"] == g]
+        .iloc[0]
+        for g in group_labels
+    ]
+    group_names = [f"C{int(g)}" for g in group_labels]
+
+    # if len of grouplabels is different from 2, return and write a warning
+    if len(group_labels) != 2:
+        warnings.warn(
+            f"{len(group_labels)} clusters were identified.\n "
+            f"This function is limited to 2 clusters to replicate the results in Rivadulla et al. (2024).\n "
+            f"If you identified more clusters, you will have to extend the functionality of "
+            f"this code by yourself ;)",
+            category=UserWarning,
+        )
+        return None
+
+    # Perform 0D and 1D statistical comparisons
+    stat_comparison = {"0D": {}, "1D": {}}
+    stat_comparison["0D"], normfigs = compare_0D_contvar_indgroups_one_condition(
+        {key: datadict[key] for key in discvars},
+        datadict["ptlabels"]["clustlabel"],
+        colours=group_colours,
+        group_names=group_names,
+    )
+
+    stat_comparison["1D"], spmfigs = compare_1D_contvar_indgroups_one_condition(
+        {key: datadict[key] for key in contvars},
+        datadict["ptlabels"]["clustlabel"],
+        group_colours=group_colours,
+    )
+
+    kinfig = vis_single_condition_kinematics_comparison(
+        datadict,
+        stat_comparison,
+        titles=titles,
+        ylabels=ylabels,
+        group_labels=group_labels,
+        group_names=group_names,
+        group_colours=group_colours,
+        vline_var=vline_var,
+    )
+
+    return stat_comparison, normfigs, spmfigs, kinfig
