@@ -499,9 +499,9 @@ def compare_1D_contvar_indgroups_one_condition(
                 spm1d.plot.plot_mean_sd(
                     group, linecolor=colour, facecolor=colour, ax=axs[0]
                 )
-            axs[0].title(key)
 
-            plot_spm_test(cont_comp[key]["np_ttest2"], title=key, ax=axs[1])
+            plot_spm_test(cont_comp[key]["np_ttest2"], title="", ax=axs[1])
+            varfigs[f"{key}_np_ttest2"].suptitle(key)
             plt.tight_layout()
 
         elif len(groups) > 2:
@@ -512,17 +512,17 @@ def compare_1D_contvar_indgroups_one_condition(
             )
 
             # Vis
-            varfigs[f"{key}_np_ttest2"], axs = plt.subplots(1, 2, figsize=(10, 4))
+            varfigs[f"{key}_np_ANOVA"], axs = plt.subplots(1, 2, figsize=(10, 4))
 
             # Average and std patterns by group
             for group, colour in zip(groups, colours):
                 spm1d.plot.plot_mean_sd(
                     group, linecolor=colour, facecolor=colour, ax=axs[0]
                 )
-                plt.title(key)
 
             plot_spm_test(cont_comp[key]["np_ANOVA"], title=key, ax=axs[1])
             plt.tight_layout()
+            varfigs[f"{key}_np_ANOVA"].suptitle(key)
 
             if cont_comp[key]["np_ANOVA"].h0reject:
                 # Adjust alpha for the number of comparisons to be performed
@@ -589,7 +589,7 @@ def compare_1D_contvar_indgroups_one_condition(
                         ax=axes[axi + 3],
                     )
 
-                varfigs[f"{key}_posthocs"].suptitle(f"{title_kword}_{key}")
+                varfigs[f"{key}_posthocs"].suptitle(key)
                 plt.tight_layout()
 
     return cont_comp, varfigs
@@ -795,6 +795,7 @@ def write_spm_stats_str(spmobj, mode="full"):
 
 def plot_spm_test(spm_obj, title, ax=None):
     """ """
+    return_fig = False
     if ax is None:
         fig, ax = plt.subplots()
         return_fig = True
