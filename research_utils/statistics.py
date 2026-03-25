@@ -305,7 +305,9 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
     """
 
     # Get kwargs
-    colours = kwargs.get("colours", sns.color_palette("Set2", len(np.unique(grouping))))
+    group_colours = kwargs.get(
+        "group_colours", sns.color_palette("Set2", len(np.unique(grouping)))
+    )
     group_names = kwargs.get("group_names", np.unique(grouping))
 
     disc_comp = {}
@@ -350,10 +352,11 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
             sm.qqplot(
                 group,
                 ax=axes[labi],
-                markeredgecolor=colours[labi],
-                markerfacecolor=colours[labi],
+                markeredgecolor=group_colours[labi],
+                markerfacecolor=group_colours[labi],
                 line="r",
             )
+
             # This is so goofy but sm.qqplot doesn't take a line colour argument and I need to change it here
             axes[labi].get_lines()[1].set_color("black")
 
@@ -455,9 +458,7 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
     return disc_comp, figs
 
 
-def compare_1D_contvar_indgroups_one_condition(
-    datadict, grouping, title_kword, figdir, colours
-):
+def compare_1D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
     """
     Compare continuous variables between independent groups using SPM1D non-parametric tests.
 
@@ -471,6 +472,11 @@ def compare_1D_contvar_indgroups_one_condition(
     Returns:
     cont_comp (dict): A dictionary containing the results of the statistical tests.
     """
+
+    # Get kwargs
+    group_colours = kwargs.get(
+        "group_colours", sns.color_palette("Set2", len(np.unique(grouping)))
+    )
 
     cont_comp = {}
     varfigs = {}
@@ -495,7 +501,7 @@ def compare_1D_contvar_indgroups_one_condition(
             varfigs[f"{key}_np_ttest2"], axs = plt.subplots(1, 2, figsize=(10, 4))
 
             # Average and std patterns by group
-            for group, colour in zip(groups, colours):
+            for group, colour in zip(groups, group_colours):
                 spm1d.plot.plot_mean_sd(
                     group, linecolor=colour, facecolor=colour, ax=axs[0]
                 )
@@ -508,14 +514,14 @@ def compare_1D_contvar_indgroups_one_condition(
             # Non parametric ANOVA
             nonparam_ANOVA = spm1d.stats.nonparam.anova1(values, grouping)
             cont_comp[key]["np_ANOVA"] = nonparam_ANOVA.inference(
-                alpha=0.05, iterations=500
+                alpha=0.05, iterations=1000
             )
 
             # Vis
             varfigs[f"{key}_np_ANOVA"], axs = plt.subplots(1, 2, figsize=(10, 4))
 
             # Average and std patterns by group
-            for group, colour in zip(groups, colours):
+            for group, colour in zip(groups, group_colours):
                 spm1d.plot.plot_mean_sd(
                     group, linecolor=colour, facecolor=colour, ax=axs[0]
                 )
@@ -571,14 +577,14 @@ def compare_1D_contvar_indgroups_one_condition(
                     spm1d.plot.plot_mean_sd(
                         groups[pair[0]],
                         ax=axes[axi],
-                        linecolor=colours[pair[0]],
-                        facecolor=colours[pair[0]],
+                        linecolor=group_colours[pair[0]],
+                        facecolor=group_colours[pair[0]],
                     )
                     spm1d.plot.plot_mean_sd(
                         groups[pair[1]],
                         ax=axes[axi],
-                        linecolor=colours[pair[0]],
-                        facecolor=colours[pair[1]],
+                        linecolor=group_colours[pair[0]],
+                        facecolor=group_colours[pair[1]],
                     )
                     axes[pairi].set_title(str(pair))
 
