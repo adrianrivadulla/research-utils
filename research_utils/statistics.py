@@ -305,9 +305,7 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
     """
 
     # Get kwargs
-    group_colours = kwargs.get(
-        "group_colours", sns.color_palette("Set2", len(np.unique(grouping)))
-    )
+    colours = kwargs.get("colours", sns.color_palette("Set2", len(np.unique(grouping))))
     group_names = kwargs.get("group_names", np.unique(grouping))
 
     disc_comp = {}
@@ -352,8 +350,8 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
             sm.qqplot(
                 group,
                 ax=axes[labi],
-                markeredgecolor=group_colours[labi],
-                markerfacecolor=group_colours[labi],
+                markeredgecolor=colours[labi],
+                markerfacecolor=colours[labi],
                 line="r",
             )
 
