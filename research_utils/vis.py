@@ -529,38 +529,23 @@ def vis_SPM_ANOVA2onerm_within_effect(
                 # Scaler for sigcluster endpoints
                 tscaler = rmfaxs[vari].get_xlim()[1] / (datadict[var].shape[1] - 1)
 
-                for sigcluster in stat_comparison[var]["ANOVA2onerm"][1].clusters:
-                    ylim = rmfaxs[vari].get_ylim()
-                    rmfaxs[vari].add_patch(
-                        plt.Rectangle(
-                            (sigcluster.endpoints[0] * tscaler, ylim[0]),
-                            (sigcluster.endpoints[1] - sigcluster.endpoints[0])
-                            * tscaler,
-                            ylim[1] - ylim[0],
-                            color="grey",
-                            alpha=0.5,
-                            linestyle="",
-                        )
-                    )
+                # TODO. Replace with add_sig_spm_cluster_patch function
+                add_sig_spm_cluster_patch(
+                    ax=rmfaxs[vari],
+                    spmobj=stat_comparison[var]["ANOVA2onerm"][1],
+                    tscaler=tscaler,
+                )
+
         elif spm_patches == "posthocs":
             for comparison in stat_comparison[var]["posthocs"]["rm"].values():
                 if comparison["snpm_ttest2"].h0reject:
                     # Scaler for sigcluster endpoints
                     tscaler = rmfaxs[vari].get_xlim()[1] / (datadict[var].shape[1] - 1)
-
-                    for sigcluster in comparison["snpm_ttest2"].clusters:
-                        ylim = rmfaxs[vari].get_ylim()
-                        rmfaxs[vari].add_patch(
-                            plt.Rectangle(
-                                (sigcluster.endpoints[0] * tscaler, ylim[0]),
-                                (sigcluster.endpoints[1] - sigcluster.endpoints[0])
-                                * tscaler,
-                                ylim[1] - ylim[0],
-                                color="grey",
-                                alpha=0.5,
-                                linestyle="",
-                            )
-                        )
+                    add_sig_spm_cluster_patch(
+                        ax=rmfaxs[vari],
+                        spmobj=comparison["snpm_ttest2"],
+                        tscaler=tscaler,
+                    )
 
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.16)
