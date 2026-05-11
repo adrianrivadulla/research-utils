@@ -456,7 +456,9 @@ def compare_0D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
     return disc_comp, figs
 
 
-def compare_1D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
+def compare_1D_contvar_indgroups_one_condition(
+    datadict, grouping, random_seed=None, **kwargs
+):
     """
     Compare continuous variables between independent groups using SPM1D non-parametric tests.
 
@@ -475,6 +477,9 @@ def compare_1D_contvar_indgroups_one_condition(datadict, grouping, **kwargs):
     group_colours = kwargs.get(
         "group_colours", sns.color_palette("Set2", len(np.unique(grouping)))
     )
+
+    if random_seed is not None:
+        np.random.seed(random_seed)
 
     cont_comp = {}
     varfigs = {}
